@@ -65,7 +65,32 @@
                  <button id="import-text-btn" class="secondary outline">Import from Text</button>
             </div>
             <form id="ticket-form">
-                <fieldset><legend>Ticket Details</legend><label for="subject">Subject<small>Title of the ticket.</small><input type="text" id="subject" name="subject" placeholder="Please send yearly Zoho invoice to <%= contract.totalCoverage.cigarId %>" required></label><label for="body">Body<small>Main content of the ticket (HTML supported).</small><textarea id="body" name="body" rows="5" placeholder="<p>Contract <%= contract.totalCoverage.cigarId %> has been amended...</p>"></textarea></label><label for="internalNote">Internal Note<small>Internal-only notes for agents.</small><textarea id="internalNote" name="internalNote" rows="3" placeholder="Customer requested yearly billing switch."></textarea></label><label for="priority">Priority<small>Defines the urgency of the ticket.</small><select id="priority" name="priority"><option value="TICKET_PRIORITY_NORMAL">Normal</option><option value="TICKET_PRIORITY_LOW">Low</option><option value="TICKET_PRIORITY_HIGH">High</option><option value="TICKET_PRIORITY_URGENT">Urgent</option></select></label><label for="tags">Tags<small>Array of tags to classify the ticket (comma-separated).</small><input type="text" id="tags" name="tags" placeholder="${contract.refs.product}, ${contract.refs.country}, monthly_to_yearly"></label><label for="language">Language<small>Ticket language (e.g., from policyholder).</small><input type="text" id="language" name="language" placeholder="${contract.settings.language}"></label></fieldset><fieldset><legend>Resource</legend><small>Links the ticket to a related entity like a contract or claim.</small><label for="resource-type">Type<select id="resource-type" name="resource-type"><option value="contract">contract</option><option value="claim">claim</option><option value="other">other</option></select></label><label for="resource-id">ID<input type="text" id="resource-id" name="resource-id" placeholder="${contract.contractId}"></label></fieldset><fieldset><legend>Requester</legend><small>Who the ticket is on behalf of (usually the policyholder).</small><label for="requester-email">Email<input type="email" id="requester-email" name="requester-email" placeholder="${contract.policyholder.email}"></label><label for="requester-name">Name<input type="text" id="requester-name" name="requester-name" placeholder="${contract.policyholder.fullName}"></label></fieldset><fieldset><legend>Zendesk Provider Data</legend><label for="brandId">Brand ID<small>Selects the Zendesk brand for the ticket.</small><input type="number" id="brandId" name="brandId" placeholder="777" value="777"></label><label for="ticketFormId">Ticket Form ID (template)<small>Determines which Zendesk ticket form is applied.</small><input type="text" id="ticketFormId" name="ticketFormId" placeholder="<%= contract.dynamicFormId %>"></label><label for="callToAction">Call to Action (template)<small>Defines what action is expected from the assignee.</small><input type="text" id="callToAction" name="callToAction" placeholder="<%= contract.faulty ? 'CALL_TO_ACTION_BILLING_ACTION' : 'CALL_TO_ACTION_OTHER' %>"></label></fieldset><fieldset><legend>Root Parameters</legend><label for="locale">Locale<small>Language code used to write the ticket (internal context).</small><input type="text" id="locale" name="locale" placeholder="en-BE"></label></fieldset>
+                <fieldset><legend>Ticket Details</legend><label for="subject">Subject<small>Title of the ticket.</small><input type="text" id="subject" name="subject" placeholder="Please send yearly Zoho invoice to <%= contract.totalCoverage.cigarId %>" required></label><label for="body">Body<small>Main content of the ticket (HTML supported).</small><textarea id="body" name="body" rows="5" placeholder="<p>Contract <%= contract.totalCoverage.cigarId %> has been amended...</p>"></textarea></label><label for="internalNote">Internal Note<small>Internal-only notes for agents.</small><textarea id="internalNote" name="internalNote" rows="3" placeholder="Customer requested yearly billing switch."></textarea></label><label for="priority">Priority<small>Defines the urgency of the ticket.</small><select id="priority" name="priority"><option value="TICKET_PRIORITY_NORMAL">Normal</option><option value="TICKET_PRIORITY_LOW">Low</option><option value="TICKET_PRIORITY_HIGH">High</option><option value="TICKET_PRIORITY_URGENT">Urgent</option></select></label><label for="tags">Tags<small>Array of tags to classify the ticket (comma-separated).</small><input type="text" id="tags" name="tags" placeholder="${contract.refs.product}, ${contract.refs.country}, monthly_to_yearly"></label><label for="language">Language<small>Ticket language (e.g., from policyholder).</small><input type="text" id="language" name="language" placeholder="${contract.settings.language}"></label></fieldset><fieldset><legend>Resource</legend><small>Links the ticket to a related entity like a contract or claim.</small><label for="resource-type">Type<select id="resource-type" name="resource-type"><option value="contract">contract</option><option value="claim">claim</option><option value="other">other</option></select></label><label for="resource-id">ID<input type="text" id="resource-id" name="resource-id" placeholder="${contract.contractId}"></label></fieldset><fieldset><legend>Requester</legend><small>Who the ticket is on behalf of (usually the policyholder).</small><label for="requester-email">Email<input type="email" id="requester-email" name="requester-email" placeholder="${contract.policyholder.email}"></label><label for="requester-name">Name<input type="text" id="requester-name" name="requester-name" placeholder="${contract.policyholder.fullName}"></label></fieldset><fieldset><legend>Zendesk Provider Data</legend><label for="brandId">Brand ID<small>Selects the Zendesk brand for the ticket.</small><input type="number" id="brandId" name="brandId" placeholder="777" value=""></label><label for="ticketFormId">Ticket Form ID (template)<small>Determines which Zendesk ticket form is applied.</small><input type="text" id="ticketFormId" name="ticketFormId" placeholder="<%= contract.dynamicFormId %>"></label>
+                
+                <label for="callToAction">Call to Action (template)<small>Defines what action is expected from the assignee.</small>
+                    <input type="text" id="callToAction" name="callToAction" list="call-to-actions-list" placeholder="<%= contract.faulty ? '...' : '...' %>">
+                    <datalist id="call-to-actions-list">
+                        <option value="CALL_TO_ACTION_UNSPECIFIED"></option>
+                        <option value="CALL_TO_ACTION_BILLING_ACTION"></option>
+                        <option value="CALL_TO_ACTION_COMPLIANCE"></option>
+                        <option value="CALL_TO_ACTION_INSURANCE_TAKEOVER"></option>
+                        <option value="CALL_TO_ACTION_CONTACT_CUSTOMER"></option>
+                        <option value="CALL_TO_ACTION_CONTRACT_MGMT"></option>
+                        <option value="CALL_TO_ACTION_CREATE_GREENCARD"></option>
+                        <option value="CALL_TO_ACTION_HOTLEAD"></option>
+                        <option value="CALL_TO_ACTION_TWIKEY_FAIL"></option>
+                        <option value="CALL_TO_ACTION_LETFINANS_FAIL"></option>
+                        <option value="CALL_TO_ACTION_INCOMPLETE_CONTRACT"></option>
+                        <option value="CALL_TO_ACTION_INFOSTATEMENT"></option>
+                        <option value="CALL_TO_ACTION_PLATE_REGISTRATION"></option>
+                        <option value="CALL_TO_ACTION_PRINT_CONTRACT"></option>
+                        <option value="CALL_TO_ACTION_STANDSTILL_DMR_CHECK"></option>
+                        <option value="CALL_TO_ACTION_TRAVEL_CERTIFICATE"></option>
+                        <option value="CALL_TO_ACTION_OTHER"></option>
+                    </datalist>
+                </label>
+                
+                </fieldset><fieldset><legend>Root Parameters</legend><label for="locale">Locale<small>Language code used to write the ticket (internal context).</small><input type="text" id="locale" name="locale" placeholder="en-BE"></label></fieldset>
             </form>
         </section>
 
@@ -108,7 +133,7 @@
             const sampleContexts = {
                 contract:{"contract":{"contractId":"c18936f8-4c26-4404-9b55-69a775a4b3a2","draftId":"409d16fb-bc23-43ed-9d4e-ccce0382de69","refs":{"product":"PLEV","country":"FR"},"policyholder":{"firstName":"Deron","lastName":"Kiehn","email":"test+e2eplevfrxbaku7lxlgukdebh9xpc6fvw@qover.com"},"settings":{"language":"fr"},"totalCoverage":{"cigarId":"FR31635532402"}}},
                 claim:{"claim":{"id":"912c7276-2496-446b-8fb2-b21631fd6b02","claimNumber":"NL25EYE00348","country":"NL","partner":{"name":"GrandVision NL"},"status":{"name":"Completed"},"policyNumber":"M-EYE8442862-8934937","claimant":{"email":"info@ocuco.com","firstName":"Yash Claims","lastName":"Close Return"}}},
-                quote:{"quote":{"id":"b8xmm7chs4ay9keob1h36cgg","_v":12,"_stamps":{"createdAt":"2025-06-18T12:04:13.801Z","updatedAt":"2025-06-18T12:04:59.285Z","updatedBy":{"id":"66966cdbcf3b107f0c619e60","name":"appqoverme-ui.sbx.qover.io"}},"status":"POLICY_QUOTE_STATUS_DRAFT","country":"IE","language":"en","partner":{"id":"66f3e36b33de059c38dbe00b","name":"volvo"},"appId":"qo5o2175h8ivy1wmcxuua5lz","currency":"EUR","productConfiguration":{"id":"volvo","version":572,"lineOfBusiness":"automotive","features":{"poi":{"enabled":true}}},"policyholder":{"entityType":"ENTITY_TYPE_PERSON","email":"test+E2EVOLVObp0MYOxc1aJmNN4AWrz8SrJ6@qover.com","firstName":"Leatha","lastName":"Murphy","phone":"+353895581177","address":{"box":"Little Silver","city":"Dublin","country":"IE","number":"2","street":"Fonthill Park","zip":"D14EK18"},"birthdate":"1975-11-25"},"contractPeriod":{"timeZone":"Europe/Dublin","startDate":"2025-06-20","endDate":"2026-06-19","startsAt":"2025-06-19T23:00:00.000Z","endsAt":"2026-06-19T23:00:00.000Z"},"package":{"name":"tpl-fire-theft"},"subject":{"make":"VOLVO","model":"XC90","modelVersion":"XC90 T8 4WD Phev Plus Bright 5","vrn":"241D30287","mainDriver":{"firstName":"Leatha","lastName":"Murphy","birthdate":"1975-11-25"}},"premium":{"fullTerm":{"cip":1708.33,"gip":{"amount":1658.57}}}}}
+                quote:{"quote":{"id":"b8xmm7chs4ay9keob1h36cgg","_v":12,"status":"POLICY_QUOTE_STATUS_DRAFT","country":"IE","language":"en","partner":{"id":"66f3e36b33de059c38dbe00b","name":"volvo"},"productConfiguration":{"id":"volvo"},"policyholder":{"firstName":"Leatha","lastName":"Murphy"},"subject":{"mainDriver":{"firstName":"Leatha","lastName":"Murphy"}}}}
             };
             const formInputIds = ['subject', 'body', 'internalNote', 'priority', 'tags', 'language', 'resource-type', 'resource-id', 'requester-email', 'requester-name', 'brandId', 'ticketFormId', 'callToAction', 'locale'];
 
@@ -117,39 +142,8 @@
             function generateJsonTemplate() { const t=t=>document.getElementById(t).value.trim(),e=t("tags")?t("tags").split(",").map(t=>t.trim()).filter(Boolean):[],o=[{type:"ACTION_TYPE_CREATE_TICKET",params:{request:{subject:t("subject"),body:t("body"),internalNote:t("internalNote"),priority:t("priority"),tags:e,language:t("language"),resource:{type:t("resource-type"),id:t("resource-id")},requester:{email:t("requester-email"),name:t("requester-name")},providerData:{zendesk:{brandId:{value:parseInt(t("brandId"),10)||null},ticketFormId:{template:t("ticketFormId")},callToAction:{template:t("callToAction")}}}},locale:t("locale")}}];cleanObject(o[0].params),jsonOutput.textContent=JSON.stringify(o,null,2),Prism.highlightElement(jsonOutput)}
             function renderLodashTemplate() { const t=jsonOutput.textContent,e=document.getElementById("lodash-final-output");let o;try{o=JSON.parse(lodashContextInput.value)}catch(t){return e.textContent=`Error parsing Input Context JSON:\n${t.message}`,void Prism.highlightElement(e)}try{const n=_.template(t),a=n(o),i=JSON.parse(a);e.textContent=JSON.stringify(i,null,2)}catch(t){e.textContent=`Error rendering Lodash template:\n${t.message}`}Prism.highlightElement(e)}
             function copyToClipboard(event) { const t=event.currentTarget,e=t.dataset.target;if(!e)return;const o=document.getElementById(e),n="TEXTAREA"===o.tagName?o.value:o.textContent;navigator.clipboard.writeText(n).then(()=>{const e=t.textContent;t.textContent="Copied!",setTimeout(()=>{t.textContent=e},2e3)}).catch(t=>{console.error("Failed to copy text: ",t)})}
-            
-            // --- THIS FUNCTION NOW CLEARS UNUSED FIELDS ---
-            function applyConfig(config) {
-                formInputIds.forEach(id => {
-                    const element = document.getElementById(id);
-                    if (element) {
-                        const newValue = config[id];
-                        // If a value is provided in the config, use it.
-                        if (newValue !== undefined) {
-                            element.value = newValue;
-                        } else {
-                            // Otherwise, reset the field to its default/empty state.
-                            switch (id) {
-                                case 'priority':
-                                    element.value = 'TICKET_PRIORITY_NORMAL';
-                                    break;
-                                case 'resource-type':
-                                    element.value = 'contract';
-                                    break;
-                                case 'brandId':
-                                    element.value = '777'; // Default Brand ID
-                                    break;
-                                default:
-                                    element.value = ''; // Clear all other text fields
-                                    break;
-                            }
-                        }
-                    }
-                });
-                generateJsonTemplate();
-            }
-
-            function handleSmartImport(jsonString) { if (!jsonString) { showNotification("Import field is empty.", 'error'); return; } try { let parsedJson = JSON.parse(jsonString); let flatConfig = {}; const ticketData = Array.isArray(parsedJson) ? parsedJson[0] : parsedJson; if (ticketData && ticketData.params && ticketData.params.request) { const request = ticketData.params.request; flatConfig.subject = request.subject; flatConfig.body = request.body; flatConfig.internalNote = request.internalNote; flatConfig.priority = request.priority; flatConfig.tags = Array.isArray(request.tags) ? request.tags.join(', ') : undefined; flatConfig.language = request.language; flatConfig.locale = ticketData.params.locale; if (request.resource) { flatConfig['resource-type'] = request.resource.type; flatConfig['resource-id'] = request.resource.id; } if (request.requester) { flatConfig['requester-email'] = request.requester.email; flatConfig['requester-name'] = request.requester.name; } applyConfig(flatConfig); showNotification('Zendesk Ticket JSON imported successfully!'); } else if (parsedJson.subject !== undefined) { applyConfig(parsedJson); showNotification('Form Configuration imported successfully!'); } else { throw new Error("Unknown JSON structure."); } } catch (error) { showNotification(`Error: ${error.message}`, 'error'); } }
+            function applyConfig(config) { formInputIds.forEach(id => { const element = document.getElementById(id); if (element) { const newValue = config[id]; if (newValue !== undefined) { element.value = newValue; } else { if (id === 'priority') { element.value = 'TICKET_PRIORITY_NORMAL'; } else if (id === 'resource-type') { element.value = 'contract'; } else { element.value = ''; } } } }); generateJsonTemplate(); }
+            function handleSmartImport(jsonString) { if (!jsonString) { showNotification("Import field is empty.", 'error'); return; } try { let parsedJson = JSON.parse(jsonString); let flatConfig = {}; const ticketData = Array.isArray(parsedJson) ? parsedJson[0] : parsedJson; if (ticketData && ticketData.params && ticketData.params.request) { const request = ticketData.params.request; flatConfig.subject = request.subject; flatConfig.body = request.body; flatConfig.internalNote = request.internalNote; flatConfig.priority = request.priority; flatConfig.tags = Array.isArray(request.tags) ? request.tags.join(', ') : undefined; flatConfig.language = request.language; flatConfig.locale = ticketData.params.locale; if (request.resource) { flatConfig['resource-type'] = request.resource.type; flatConfig['resource-id'] = request.resource.id; } if (request.requester) { flatConfig['requester-email'] = request.requester.email; flatConfig['requester-name'] = request.requester.name; } flatConfig.brandId = request.providerData?.zendesk?.brandId?.value; applyConfig(flatConfig); showNotification('Zendesk Ticket JSON imported successfully!'); } else if (parsedJson.subject !== undefined) { applyConfig(parsedJson); showNotification('Form Configuration imported successfully!'); } else { throw new Error("Unknown JSON structure."); } } catch (error) { showNotification(`Error: ${error.message}`, 'error'); } }
             function handleTextImport() { const jsonString = importConfigTextarea.value; handleSmartImport(jsonString); importModal.close(); }
             function switchContext(key) { lodashContextInput.value = JSON.stringify(sampleContexts[key], null, 2); document.querySelectorAll('.context-switcher button').forEach(btn => { btn.classList.toggle('active', btn.dataset.context === key); }); }
 
@@ -172,7 +166,7 @@
             document.getElementById('resource-id').value = '${contract.contractId}';
             document.getElementById('requester-email').value = '${contract.policyholder.email}';
             document.getElementById('requester-name').value = '${contract.policyholder.fullName}';
-            document.getElementById('ticketFormId').value = '<%= contract.dynamicFormId %>';
+            document.getElementById('ticketFormId').value = '';
             document.getElementById('callToAction').value = "<%= contract.faulty ? 'CALL_TO_ACTION_BILLING_ACTION' : 'CALL_TO_ACTION_OTHER' %>";
             document.getElementById('locale').value = 'en-BE';
             
