@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qover Zendesk Ticket JSON Generator</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+
+    <style>
+        /* --- QOVER BRAND THEME --- */
+        :root {
+            --qover-black:#081425;--qover-cyan-1:#2FD4DF;--qover-grey:#DBE6E5;--qover-light-grey:#F4F7F7;--qover-cyan-2:#13595E;--qover-cyan-3:#21969E;--qover-cyan-4:#83E5EC;--qover-cyan-5:#D6F6F9;--text-color:var(--qover-black);--background-color:var(--qover-light-grey);--primary-accent:var(--qover-cyan-1);--border-color:var(--qover-grey);--card-background:#FFFFFF;--font-family:'Albert Sans',sans-serif;--color:var(--text-color);--background-color:var(--background-color);--h1-color:var(--text-color);--h2-color:var(--text-color);--h3-color:var(--text-color);--form-element-border-color:var(--border-color);--form-element-focus-color:var(--primary-accent);--card-background-color:var(--card-background);--card-border-color:var(--border-color);--card-box-shadow:0 4px 12px rgba(8,20,37,.05)
+        }
+        body { font-weight: 400; }
+        h1, h2, h3, legend, strong { font-weight: 700; }
+        h2, h3 { border-bottom: 2px solid var(--primary-accent); padding-bottom: .75rem; }
+        header.container p { margin-bottom: 1.5rem; }
+        main.container-fluid { margin-top: 0; }
+
+        /* Buttons */
+        button, input[type="submit"], input[type="button"] { font-weight: 700; border-radius: 8px; }
+        #render-btn, #apply-import-btn { --background-color:var(--primary-accent);--border-color:var(--primary-accent);--color:var(--qover-black) }
+        #render-btn:hover, #apply-import-btn:hover { --background-color:var(--qover-cyan-3);--border-color:var(--qover-cyan-3) }
+        .secondary.outline, .config-buttons button, #download-config-btn { --background-color:transparent;--border-color:var(--primary-accent);--color:var(--qover-cyan-2);border-width:2px }
+        .secondary.outline:hover, .config-buttons button:hover, #download-config-btn:hover { --background-color:var(--primary-accent);--border-color:var(--primary-accent);--color:var(--qover-black) }
+        .copy-btn { background-color: var(--qover-cyan-5); color: var(--qover-cyan-2); border: none; }
+        .copy-btn:hover { background-color: var(--qover-cyan-4); }
+
+        /* Context Switcher Buttons */
+        .context-switcher { display: flex; gap: .5rem; margin-bottom: .5rem; }
+        .context-switcher button { padding: .5rem .75rem; line-height: 1; }
+        .context-switcher button.active { background-color: var(--qover-cyan-2); border-color: var(--qover-cyan-2); color: white; }
+
+        /* Form Elements */
+        input, select, textarea { background-color: var(--card-background); border-radius: 8px; }
+        input:focus, select:focus, textarea:focus { --box-shadow:0 0 0 2px var(--qover-cyan-4) }
+        pre[class*="language-"] { border: 1px solid var(--border-color); box-shadow: none; }
+        
+        /* Notification Styles */
+        #notification-area { position:fixed;top:20px;right:20px;z-index:1000;display:flex;flex-direction:column;gap:10px }
+        .notification { padding:15px;border-radius:var(--border-radius);color:var(--qover-black);font-weight:500;opacity:0;transform:translateX(100%);animation:slideIn .5s forwards,fadeOut .5s 3.5s forwards;box-shadow:0 4px 12px rgba(0,0,0,.1) }
+        .notification.success { background-color:var(--qover-cyan-4);border-left:5px solid var(--qover-cyan-3) }
+        .notification.error { background-color:#ffebee;border-left:5px solid #e57373 }
+        @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
+        @keyframes fadeOut { to { opacity: 0; transform: translateX(100%); } }
+    </style>
+</head>
+<body>
+    <div id="notification-area"></div>
+    <header class="container">
+        <h1>Zendesk Ticket JSON Generator</h1>
+        <p>Use the form on the left to build your Lodash template. The live JSON template will appear on the right. Then, use the "Lodash Tester" to see the final output with your context data.</p>
+    </header>
+
+    <main class="container-fluid grid">
+        <section class="form-container">
+            <h2>Ticket Template Builder</h2>
+            <div class="config-buttons">
+                <button id="import-file-btn" class="secondary outline">Import from File</button>
+                <button id="import-text-btn" class="secondary outline">Import from Text</button>
+                <button id="export-config-btn" class="secondary outline">Export Config</button>
+                <input type="file" id="import-file-input" accept=".json" style="display:none;">
+            </div>
+            <form id="ticket-form">
+                <fieldset><legend>Ticket Details</legend><label for="subject">Subject<small>Title of the ticket.</small><input type="text" id="subject" name="subject" placeholder="Please send yearly Zoho invoice to <%= contract.totalCoverage.cigarId %>" required></label><label for="body">Body<small>Main content of the ticket (HTML supported).</small><textarea id="body" name="body" rows="5" placeholder="<p>Contract <%= contract.totalCoverage.cigarId %> has been amended...</p>"></textarea></label><label for="internalNote">Internal Note<small>Internal-only notes for agents.</small><textarea id="internalNote" name="internalNote" rows="3" placeholder="Customer requested yearly billing switch."></textarea></label><label for="priority">Priority<small>Defines the urgency of the ticket.</small><select id="priority" name="priority"><option value="TICKET_PRIORITY_NORMAL">Normal</option><option value="TICKET_PRIORITY_LOW">Low</option><option value="TICKET_PRIORITY_HIGH">High</option><option value="TICKET_PRIORITY_URGENT">Urgent</option></select></label><label for="tags">Tags<small>Array of tags to classify the ticket (comma-separated).</small><input type="text" id="tags" name="tags" placeholder="${contract.refs.product}, ${contract.refs.country}, monthly_to_yearly"></label><label for="language">Language<small>Ticket language (e.g., from policyholder).</small><input type="text" id="language" name="language" placeholder="${contract.settings.language}"></label></fieldset><fieldset><legend>Resource</legend><small>Links the ticket to a related entity like a contract or claim.</small><label for="resource-type">Type<select id="resource-type" name="resource-type"><option value="contract">contract</option><option value="claim">claim</option><option value="other">other</option></select></label><label for="resource-id">ID<input type="text" id="resource-id" name="resource-id" placeholder="${contract.contractId}"></label></fieldset><fieldset><legend>Requester</legend><small>Who the ticket is on behalf of (usually the policyholder).</small><label for="requester-email">Email<input type="email" id="requester-email" name="requester-email" placeholder="${contract.policyholder.email}"></label><label for="requester-name">Name<input type="text" id="requester-name" name="requester-name" placeholder="${contract.policyholder.fullName}"></label></fieldset><fieldset><legend>Zendesk Provider Data</legend><label for="brandId">Brand ID<small>Selects the Zendesk brand for the ticket.</small><input type="number" id="brandId" name="brandId" placeholder="777" value="777"></label><label for="ticketFormId">Ticket Form ID (template)<small>Determines which Zendesk ticket form is applied.</small><input type="text" id="ticketFormId" name="ticketFormId" placeholder="<%= contract.dynamicFormId %>"></label><label for="callToAction">Call to Action (template)<small>Defines what action is expected from the assignee.</small><input type="text" id="callToAction" name="callToAction" placeholder="<%= contract.faulty ? 'CALL_TO_ACTION_BILLING_ACTION' : 'CALL_TO_ACTION_OTHER' %>"></label></fieldset><fieldset><legend>Root Parameters</legend><label for="locale">Locale<small>Language code used to write the ticket (internal context).</small><input type="text" id="locale" name="locale" placeholder="en-BE"></label></fieldset>
+            </form>
+        </section>
+
+        <section class="output-container">
+             <div class="output-header"><h3>Generated JSON Template</h3><button class="copy-btn" data-target="json-template-output">Copy Template</button></div><pre><code id="json-template-output" class="language-json"></code></pre>
+             <div class="output-header"><h3>Lodash Template Tester</h3><button class="copy-btn" data-target="lodash-final-output">Copy Output</button></div>
+             
+             <label for="lodash-context"><strong>Input Context (JSON)</strong></label>
+             <div class="context-switcher">
+                <button class="secondary outline active" data-context="contract">Contract</button>
+                <button class="secondary outline" data-context="quote">Quote</button>
+                <button class="secondary outline" data-context="claim">Claim</button>
+             </div>
+             <textarea id="lodash-context" rows="8"></textarea>
+             
+             <button id="render-btn" style="width: 100%; margin-top: 1rem;">Render with Context</button>
+             <label for="lodash-final-output" style="margin-top: 1rem;"><strong>Rendered Output</strong></label><pre><code id="lodash-final-output" class="language-json">{ "message": "Click 'Render with Context' to see the final result." }</code></pre>
+        </section>
+    </main>
+
+    <dialog id="export-modal"><article><header><a href="#close" aria-label="Close" class="close" id="close-export-modal-btn"></a><h3>Exported Form Configuration</h3></header><p>Copy the JSON below or download it as a file. You can import this later to restore the form.</p><textarea id="config-json-output"></textarea><footer><button id="download-config-btn">Download .json</button><button class="copy-btn" data-target="config-json-output">Copy to Clipboard</button></footer></article></dialog>
+    <dialog id="import-modal"><article><header><a href="#close" aria-label="Close" class="close" id="close-import-modal-btn"></a><h3>Import Configuration from Text</h3></header><p>Paste your exported configuration JSON in the text area below.</p><textarea id="import-config-textarea" placeholder='{&#10;  "subject": "My saved subject...",&#10;  "body": "My saved body...",&#10;  "..."&#10;}'></textarea><footer><button id="apply-import-btn">Apply Configuration</button></footer></article></dialog>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('ticket-form');
+            const jsonOutput = document.getElementById('json-template-output');
+            const lodashContextInput = document.getElementById('lodash-context');
+            const renderBtn = document.getElementById('render-btn');
+            const contextSwitcher = document.querySelector('.context-switcher');
+            const exportBtn = document.getElementById('export-config-btn');
+            const importFileBtn = document.getElementById('import-file-btn');
+            const importTextBtn = document.getElementById('import-text-btn');
+            const importFileInput = document.getElementById('import-file-input');
+            const exportModal = document.getElementById('export-modal');
+            const closeExportModalBtn = document.getElementById('close-export-modal-btn');
+            const downloadConfigBtn = document.getElementById('download-config-btn');
+            const importModal = document.getElementById('import-modal');
+            const closeImportModalBtn = document.getElementById('close-import-modal-btn');
+            const importConfigTextarea = document.getElementById('import-config-textarea');
+            const applyImportBtn = document.getElementById('apply-import-btn');
+
+            // --- ALL YOUR CONTEXT DATA IS HERE ---
+            const sampleContexts = {
+                contract:{"contract":{"contractId":"c18936f8-4c26-4404-9b55-69a775a4b3a2","draftId":"409d16fb-bc23-43ed-9d4e-ccce0382de69","refs":{"product":"PLEV","country":"FR","partnerId":"621de5c13f6ad13689238ea5"},"startDate":"2025-08-15T00:00:00.000Z","endDate":"2026-08-14T23:59:59.999Z","contractPeriod":{"startDate":"2025-08-15T00:00:00.000Z"},"purchaseDate":"2025-08-13T09:16:21.521Z","policyholder":{"entityType":"ENTITY_TYPE_COMPANY","customerId":"CL00007626","companyName":"Sauer - BashirianPrice - Jaskolski","firstName":"Deron","lastName":"Kiehn","vatIn":"FRXX123456789","phone":"+33735574915","email":"test+e2eplevfrxbaku7lxlgukdebh9xpc6fvw@qover.com","address":{"country":"FR","city":"LAIGNY","zip":"02140","street":"Bell Lane 999"},"billingAddress":{"country":"FR","city":"AUZET","zip":"04140","street":"N 3rd Street 677","number":"165"},"marketingOptins":[]},"risk":{"make":"Camisa 9 Inc","model":"Florian Personal Spacecraft","vin":"c39b910b-0175-4b07-84af-6a6c8d767192","mainDriver":{"address":{"country":"FR","zip":"02140","city":"LAIGNY","street":"Bell Lane 999"},"metadata":[]},"purchasePrice":300000,"vehicleType":"VEHICLE_TYPE_HOVERBOARD","vehiclePurchaseDate":"2025-08-13","additionalDrivers":[]},"terms":{"variant":"VARIANT_TPL_PAL1","tpl":true,"omnium":false,"partialOmnium":false,"legalDefence":false,"damageAndTheft":false,"personalAccidentLevel":"PERSONAL_ACCIDENT_LEVEL_1"},"discountCodes":[],"attachments":[],"status":"STATUS_CLOSED","documents":[{"type":"generalConditions","uri":"CG_WAKAMQOVER_NVEI_RCIA_20221021_1"},{"type":"IPID","uri":"IPID-fr"},{"type":"retractation","uri":"retractation-fr"}],"payment":{"status":"PAYMENT_STATUS_PAID","paymentMethod":"PAYMENT_METHOD_CREDITCARD","paymentId":"689c57e6779ea805c142f0b5"},"settings":{"language":"fr","timezone":"UTC","currency":"EUR","isAnonymized":false,"requestPaperCopy":false,"sendRegisterLetterElectronicallyConsented":false,"paymentReceivedTransition":"TRANSITION_TYPE_TO_PENDING_SIGNATURE_CONTRACT","configuration":{"id":"630731867116f290bb884ec6","refs":{"product":"PLEV","country":"FR"}}},"metadata":[{"key":"identityId","value":"630f09a815f6f862b9940171"},{"key":"partnerId","value":"621de5c13f6ad13689238ea5"}],"publicMetadata":[{},{},{},{}],"versionInfo":{"creationDate":"2025-08-29T00:01:41.354Z","effectiveDate":"2025-08-29T23:59:59.999Z","versionType":"VERSION_TYPE_CANCEL","versionNumber":2},"coverages":[{"cigarId":"FR31635532402","name":"TPL"},{"cigarId":"FR34787921240","name":"PERSONALACC1"}],"totalCoverage":{"cigarId":"FR31635532402","name":"totalPrice"}}},
+                claim:{"claim":{"id":"912c7276-2496-446b-8fb2-b21631fd6b02","claimNumber":"NL25EYE00348","version":2,"_links":{"self":{"href":"https://api.sbx.qover.io/claims/v1/claims/912c7276-2496-446b-8fb2-b21631fd6b02"},"download":{"href":"https://api.sbx.qover.io/claims/v1/claims/912c7276-2496-446b-8fb2-b21631fd6b02.pdf"}},"_stamps":{"createdAt":"2025-08-29T13:27:53.608Z","createdBy":{"id":"634d9cd1ada924e4dfc03cf8","name":"Eye-Wish"},"updatedAt":"2025-08-29T13:27:54.006Z","updatedBy":{"id":"634d9cd1ada924e4dfc03cf8","name":"Eye-Wish"}},"productConfiguration":{"id":"06b8264a-d424-421b-a77d-aa333a448ff7","version":2,"product":"EYEWEAR"},"country":"NL","partner":{"id":"6231a32456109e11e23deb5f","name":"GrandVision NL"},"customerId":"CL00007728","currency":"EUR","language":"en","status":{"category":"STATUS_CODE_OK","name":"Completed"},"policyNumber":"M-EYE8442862-8934937","policy":{"type":"POLICY_TYPE_MASTER_POLICY_RISK_ITEM","id":"68b1a7359b83513c9185bf3d","number":"M-EYE8442862-8934937","version":3,"product":"eyewear","country":"NL","partner":{"id":"6231a32456109e11e23deb5f","name":"GrandVision NL"},"effective":true},"type":"DAMAGE","submittedAt":"2025-08-29T13:27:53.609Z","consentDate":"2025-08-29T13:27:53.609Z","claimant":{"entityType":"ENTITY_TYPE_PERSON","customer":{"id":"CL00007728"},"customerReference":{"id":"CL00007728"},"email":"info@ocuco.com","firstName":"Yash Claims","lastName":"Close Return","birthdate":"1998-02-20"},"incident":{"date":"2025-08-29","time":"13:27:52","details":{"cost":353.85},"entities":[]},"attachments":[],"tpa":{"id":"qover","name":"Qover"},"exposures":[{"id":1,"number":"NL25EYE00348-01","coverage":{"code":"glasses"},"reference":"default","coverageCode":"glasses","status":"STATUS_OPEN","recoveriesTotalAmount":{"amount":7077,"currency":"EUR"},"reserveAmount":{"amount":7077,"currency":"EUR"}}]}},
+                quote:{"quote":{"id":"b8xmm7chs4ay9keob1h36cgg","_v":12,"_stamps":{"createdAt":"2025-06-18T12:04:13.801Z","updatedAt":"2025-06-18T12:04:59.285Z","updatedBy":{"id":"66966cdbcf3b107f0c619e60","name":"appqoverme-ui.sbx.qover.io"}},"status":"POLICY_QUOTE_STATUS_DRAFT","country":"IE","language":"en","partner":{"id":"66f3e36b33de059c38dbe00b","name":"volvo"},"appId":"qo5o2175h8ivy1wmcxuua5lz","currency":"EUR","productConfiguration":{"id":"volvo","version":572,"lineOfBusiness":"automotive","features":{"poi":{"enabled":true}}},"policyholder":{"entityType":"ENTITY_TYPE_PERSON","email":"test+E2EVOLVObp0MYOxc1aJmNN4AWrz8SrJ6@qover.com","firstName":"Leatha","lastName":"Murphy","phone":"+353895581177","address":{"box":"Little Silver","city":"Dublin","country":"IE","number":"2","street":"Fonthill Park","zip":"D14EK18"},"birthdate":"1975-11-25"},"contractPeriod":{"timeZone":"Europe/Dublin","startDate":"2025-06-20","endDate":"2026-06-19","startsAt":"2025-06-19T23:00:00.000Z","endsAt":"2026-06-19T23:00:00.000Z"},"package":{"name":"tpl-fire-theft"},"subject":{"make":"VOLVO","model":"XC90","modelVersion":"XC90 T8 4WD Phev Plus Bright 5","vrn":"241D30287","mainDriver":{"firstName":"Leatha","lastName":"Murphy","birthdate":"1975-11-25"}},"premium":{"fullTerm":{"cip":1708.33,"gip":{"amount":1658.57}}}}}
+            };
+
+            const formInputIds = ['subject', 'body', 'internalNote', 'priority', 'tags', 'language', 'resource-type', 'resource-id', 'requester-email', 'requester-name', 'brandId', 'ticketFormId', 'callToAction', 'locale'];
+
+            function showNotification(message, type = 'success') { const t=document.getElementById("notification-area"),e=document.createElement("div");e.className=`notification ${type}`,e.textContent=message,t.appendChild(e),setTimeout(()=>{e.remove()},4e3)}
+            const cleanObject = (obj) => { for(const t in obj)null===obj[t]||void 0===obj[t]||""===obj[t]?delete obj[t]:Array.isArray(obj[t])&&0===obj[t].length?delete obj[t]:"object"==typeof obj[t]&&!Array.isArray(obj[t])&&(cleanObject(obj[t]),0===Object.keys(obj[t]).length&&delete obj[t])};
+            function generateJsonTemplate() { const t=t=>document.getElementById(t).value.trim(),e=t("tags")?t("tags").split(",").map(t=>t.trim()).filter(Boolean):[],o=[{type:"ACTION_TYPE_CREATE_TICKET",params:{request:{subject:t("subject"),body:t("body"),internalNote:t("internalNote"),priority:t("priority"),tags:e,language:t("language"),resource:{type:t("resource-type"),id:t("resource-id")},requester:{email:t("requester-email"),name:t("requester-name")},providerData:{zendesk:{brandId:{value:parseInt(t("brandId"),10)||null},ticketFormId:{template:t("ticketFormId")},callToAction:{template:t("callToAction")}}}},locale:t("locale")}}];cleanObject(o[0].params),jsonOutput.textContent=JSON.stringify(o,null,2),Prism.highlightElement(jsonOutput)}
+            function renderLodashTemplate() { const t=jsonOutput.textContent,e=document.getElementById("lodash-final-output");let o;try{o=JSON.parse(lodashContextInput.value)}catch(t){return e.textContent=`Error parsing Input Context JSON:\n${t.message}`,void Prism.highlightElement(e)}try{const n=_.template(t),a=n(o),i=JSON.parse(a);e.textContent=JSON.stringify(i,null,2)}catch(t){e.textContent=`Error rendering Lodash template:\n${t.message}`}Prism.highlightElement(e)}
+            function copyToClipboard(event) { const t=event.currentTarget,e=t.dataset.target;if(!e)return;const o=document.getElementById(e),n="TEXTAREA"===o.tagName?o.value:o.textContent;navigator.clipboard.writeText(n).then(()=>{const e=t.textContent;t.textContent="Copied!",setTimeout(()=>{t.textContent=e},2e3)}).catch(t=>{console.error("Failed to copy text: ",t)})}
+            function exportConfig() { const t={},e=document.getElementById("config-json-output");formInputIds.forEach(e=>{t[e]=document.getElementById(e).value}),e.value=JSON.stringify(t,null,2),exportModal.showModal()}
+            function downloadConfig() { const t=document.getElementById("config-json-output").value,e=new Blob([t],{type:"application/json"}),o=URL.createObjectURL(e),n=document.createElement("a");n.href=o,n.download="zendesk-ticket-config.json",document.body.appendChild(n),n.click(),document.body.removeChild(n),URL.revokeObjectURL(o)}
+            function applyConfig(config) { formInputIds.forEach(id => { if (config[id] !== undefined) { const element = document.getElementById(id); if (element) { element.value = config[id]; } } }); generateJsonTemplate(); }
+            function handleSmartImport(jsonString) { if (!jsonString) { showNotification("Import field is empty.", 'error'); return; } try { let parsedJson = JSON.parse(jsonString); let flatConfig = {}; const ticketData = Array.isArray(parsedJson) ? parsedJson[0] : parsedJson; if (ticketData && ticketData.params && ticketData.params.request) { const request = ticketData.params.request; flatConfig.subject = request.subject || ''; flatConfig.body = request.body || ''; flatConfig.internalNote = request.internalNote || ''; flatConfig.priority = request.priority || 'TICKET_PRIORITY_NORMAL'; flatConfig.tags = Array.isArray(request.tags) ? request.tags.join(', ') : ''; flatConfig.language = request.language || ''; flatConfig.locale = ticketData.params.locale || ''; if (request.resource) { flatConfig['resource-type'] = request.resource.type || 'contract'; flatConfig['resource-id'] = request.resource.id || ''; } if (request.requester) { flatConfig['requester-email'] = request.requester.email || ''; flatConfig['requester-name'] = request.requester.name || ''; } applyConfig(flatConfig); showNotification('Zendesk Ticket JSON imported successfully!'); } else if (parsedJson.subject !== undefined) { applyConfig(parsedJson); showNotification('Form Configuration imported successfully!'); } else { throw new Error("Unknown JSON structure."); } } catch (error) { showNotification(`Error: ${error.message}`, 'error'); } }
+            function handleFileImport(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => handleSmartImport(e.target.result); reader.readAsText(file); importFileInput.value = ''; }
+            function handleTextImport() { const jsonString = importConfigTextarea.value; handleSmartImport(jsonString); importModal.close(); }
+            function switchContext(key) { lodashContextInput.value = JSON.stringify(sampleContexts[key], null, 2); document.querySelectorAll('.context-switcher button').forEach(btn => { btn.classList.toggle('active', btn.dataset.context === key); }); }
+
+            // --- Event Listeners Setup ---
+            form.addEventListener('input', generateJsonTemplate);
+            renderBtn.addEventListener('click', renderLodashTemplate);
+            contextSwitcher.addEventListener('click', (event) => { if (event.target.tagName === 'BUTTON') { switchContext(event.target.dataset.context); } });
+            exportBtn.addEventListener('click', exportConfig);
+            downloadConfigBtn.addEventListener('click', downloadConfig);
+            closeExportModalBtn.addEventListener('click', () => exportModal.close());
+            importFileBtn.addEventListener('click', () => importFileInput.click());
+            importFileInput.addEventListener('change', handleFileImport);
+            importTextBtn.addEventListener('click', () => importModal.showModal());
+            applyImportBtn.addEventListener('click', handleTextImport);
+            closeImportModalBtn.addEventListener('click', () => importModal.close());
+            document.querySelectorAll('.copy-btn').forEach(button => { button.addEventListener('click', copyToClipboard); });
+
+            // --- Initial Load ---
+            document.getElementById('subject').value = 'Please send yearly Zoho invoice to <%= contract.totalCoverage.cigarId %>';
+            document.getElementById('body').value = '<p>Contract <%= contract.totalCoverage.cigarId %> has been amended automatically …</p>';
+            document.getElementById('internalNote').value = 'Yearly switch processed automatically';
+            document.getElementById('priority').value = 'TICKET_PRIORITY_HIGH';
+            document.getElementById('tags').value = '${contract.refs.product}, ${contract.refs.country}, monthly_to_yearly';
+            document.getElementById('language').value = '${contract.settings.language}';
+            document.getElementById('resource-id').value = '${contract.contractId}';
+            document.getElementById('requester-email').value = '${contract.policyholder.email}';
+            document.getElementById('requester-name').value = '${contract.policyholder.fullName}';
+            document.getElementById('ticketFormId').value = '<%= contract.dynamicFormId %>';
+            document.getElementById('callToAction').value = "<%= contract.faulty ? 'CALL_TO_ACTION_BILLING_ACTION' : 'CALL_TO_ACTION_OTHER' %>";
+            document.getElementById('locale').value = 'en-BE';
+            
+            switchContext('contract');
+            generateJsonTemplate();
+        });
+    </script>
+</body>
+</html>
