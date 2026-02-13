@@ -3,15 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Flow Studio Pro | Agent Builder</title>
+  <title>Flow Studio Pro | Dust Edition</title>
 
   <link href="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  
   <link href="https://cdn.jsdelivr.net/npm/jsoneditor@9.10.0/dist/jsoneditor.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/jsoneditor@9.10.0/dist/jsoneditor.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.3/ace.js"></script>
 
   <style>
     :root { --primary: #4361ee; --bg-canvas: #f8f9fb; --panel-bg: #ffffff; --border: #e5e7eb; }
@@ -26,18 +28,22 @@
     }
 
     #drawflow { flex: 1; height: 100%; background-color: var(--bg-canvas); background-image: radial-gradient(#d1d5db 1px, transparent 1px); background-size: 24px 24px; }
-    #nodeForm { width: 650px; background: var(--panel-bg); border-left: 1px solid var(--border); display: none; flex-direction: column; height: 100%; z-index: 101; }
-    .form-content { padding: 24px; overflow-y: auto; flex: 1; }
+
+    #nodeEditorOverlay {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: white; z-index: 2000; display: none; flex-direction: column;
+    }
+    .editor-header { padding: 16px 32px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .editor-body { flex: 1; display: flex; overflow: hidden; }
+    .editor-main { flex: 2; padding: 40px 60px; overflow-y: auto; border-right: 1px solid var(--border); }
+    .editor-sidebar { flex: 1; padding: 40px; background: #fcfcfd; overflow-y: auto; }
+    .prompt-textarea { width: 100%; border: none; outline: none; font-size: 1.15rem; line-height: 1.7; color: #1f2937; height: 100%; min-height: 600px; resize: none; }
 
     .drawflow-node { background: #fff !important; border: 1px solid #dee2e6 !important; border-radius: 10px !important; width: 220px !important; padding: 0 !important; }
-    .drawflow-node.selected { border: 2px solid var(--primary) !important; box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.1) !important; }
     .node-header { background: var(--primary); color: white; padding: 10px 12px; border-radius: 9px 9px 0 0; font-size: 0.85rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
-    .node-body { padding: 14px; font-size: 0.8rem; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .node-body { padding: 14px; font-size: 0.8rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     
-    .btn-icon-sm { cursor: pointer; font-size: 0.9rem; opacity: 0.8; transition: opacity 0.2s; }
-    .btn-icon-sm:hover { opacity: 1; }
-    .btn-icon { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
-    .jsoneditor { border: 1px solid #dee2e6 !important; height: 100%; }
+    #transformerAce { width: 100%; height: 320px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -45,53 +51,63 @@
 <div id="app">
   <div class="top-bar justify-content-between">
     <div class="d-flex align-items-center gap-3">
-      <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-terminal-fill me-2"></i>Flow Studio Pro</h6>
-      <button id="addBtn" class="btn btn-primary btn-sm rounded-pill px-3">Add Node</button>
-      
-      <div class="btn-group shadow-sm ms-2">
-        <button id="zoomOut" class="btn btn-light btn-sm border"><i class="bi bi-dash-lg"></i></button>
-        <button id="zoomReset" class="btn btn-light btn-sm border fw-bold" style="min-width: 60px;" id="zoomLabel">100%</button>
-        <button id="zoomIn" class="btn btn-light btn-sm border"><i class="bi bi-plus-lg"></i></button>
+      <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-cpu-fill me-2"></i>Flow Studio Pro</h6>
+      <button id="addBtn" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">Add Node</button>
+      <div class="btn-group shadow-sm ms-2" style="background: white; border-radius: 8px;">
+        <button id="zoomOut" class="btn btn-light btn-sm border-0"><i class="bi bi-dash-lg"></i></button>
+        <button id="zoomReset" class="btn btn-light btn-sm border-start border-end fw-bold" style="min-width: 65px;">100%</button>
+        <button id="zoomIn" class="btn btn-light btn-sm border-0"><i class="bi bi-plus-lg"></i></button>
       </div>
-      
-      <button id="centerBtn" class="btn btn-outline-secondary btn-sm rounded-pill px-3" title="Center Workspace"><i class="bi bi-fullscreen-exit"></i></button>
+      <button id="centerBtn" class="btn btn-outline-secondary btn-sm rounded-pill px-3 shadow-sm"><i class="bi bi-fullscreen-exit"></i></button>
     </div>
     <div class="d-flex gap-2">
-      <button id="importBtn" class="btn btn-light btn-sm border">Import</button>
-      <button id="exportBtn" class="btn btn-dark btn-sm rounded-pill px-4">Export JSON</button>
+      <button id="importBtn" class="btn btn-light btn-sm border shadow-sm">Import</button>
+      <button id="exportBtn" class="btn btn-dark btn-sm rounded-pill px-4 shadow-sm">Export JSON</button>
     </div>
   </div>
-
   <div id="drawflow"></div>
-
-  <form id="nodeForm">
-    <div class="form-content">
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <h5 id="formTitle" class="mb-0 fw-bold">Node Configuration</h5>
-        <button type="button" class="btn-close" id="cancelBtn"></button>
-      </div>
-      <div class="mb-3"><label class="form-label small fw-bold text-muted">NODE ID</label><input required class="form-control bg-light border-0 fw-bold" id="nodeIdInput"></div>
-      <div class="mb-4"><label class="form-label small fw-bold text-muted">PROMPT TEMPLATE</label><textarea required rows="3" class="form-control" id="promptInput"></textarea></div>
-      <div class="editor-container mb-3" style="height: 400px;"><label class="form-label small fw-bold text-muted">INPUT TRANSFORMER (JSONATA)</label><div id="transformerEditor"></div></div>
-      <div class="editor-container mb-3" style="height: 250px;"><label class="form-label small fw-bold text-muted">OUTPUT JSON SCHEMA</label><div id="schemaEditor"></div></div>
-      <div class="accordion accordion-flush border rounded mb-3" id="advAccordion">
-        <div class="accordion-item">
-          <h2 class="accordion-header"><button class="accordion-button collapsed py-2 small fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAdv">Advanced</button></h2>
-          <div id="collapseAdv" class="accordion-collapse collapse"><div class="accordion-body p-2 bg-light">
-              <input class="form-control form-control-sm mb-2" id="modelIdInput" placeholder="Model ID"><input class="form-control form-control-sm mb-2" id="projectInput" placeholder="Project Name"><input class="form-control form-control-sm" id="locationInput" placeholder="Location">
-          </div></div>
-        </div>
-      </div>
-    </div>
-    <div class="p-3 border-top bg-light d-flex gap-2">
-      <button type="submit" class="btn btn-primary flex-grow-1 fw-bold">SAVE CHANGES</button>
-      <button type="button" class="btn btn-outline-secondary btn-icon" id="copyBtn" title="Duplicate"><i class="bi bi-copy"></i></button>
-      <button type="button" class="btn btn-danger btn-icon" id="deleteBtn" title="Delete"><i class="bi bi-trash"></i></button>
-    </div>
-  </form>
 </div>
 
-<div class="modal fade" id="importModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content"><div class="modal-body"><textarea id="importArea" class="form-control font-monospace" rows="15"></textarea></div><div class="modal-footer border-0"><button id="importLoadBtn" class="btn btn-primary w-100 fw-bold">LOAD FLOW</button></div></div></div></div>
+<div id="nodeEditorOverlay">
+  <div class="editor-header">
+    <div class="d-flex align-items-center gap-3">
+      <h5 class="mb-0 fw-bold" id="formTitle">Edit Agent</h5>
+      <div class="input-group input-group-sm" style="width: 250px;">
+        <span class="input-group-text bg-light border-0">@</span>
+        <input type="text" class="form-control bg-light border-0 fw-bold" id="nodeIdInput">
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-danger btn-sm px-3" id="deleteBtn">Delete</button>
+      <button class="btn btn-light btn-sm border px-3" id="cancelBtn">Cancel</button>
+      <button class="btn btn-primary btn-sm px-4 fw-bold" id="saveBtn">Save Changes</button>
+    </div>
+  </div>
+  <div class="editor-body">
+    <div class="editor-main">
+      <label class="form-label fw-bold text-uppercase small text-muted mb-3">Instructions</label>
+      <textarea class="prompt-textarea" id="promptInput"></textarea>
+    </div>
+    <div class="editor-sidebar">
+      <div class="mb-4">
+        <label class="form-label fw-bold text-uppercase small text-muted mb-2">Transformer (JSONata)</label>
+        <div id="transformerAce"></div>
+      </div>
+      <div class="mb-4">
+        <label class="form-label fw-bold text-uppercase small text-muted mb-2">JSON Schema</label>
+        <div id="schemaEditor" style="height: 250px;"></div>
+      </div>
+      <div class="p-3 bg-white border rounded shadow-sm">
+        <label class="small fw-bold mb-2 text-muted text-uppercase" style="font-size: 0.7rem;">Model Configuration</label>
+        <input class="form-control form-control-sm mb-2" id="modelIdInput" placeholder="gemini-2.0-flash-001">
+        <input class="form-control form-control-sm mb-2" id="projectInput" placeholder="Project Name">
+        <input class="form-control form-control-sm" id="locationInput" placeholder="europe-west1">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="importModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content shadow-lg border-0"><div class="modal-body p-4"><textarea id="importArea" class="form-control font-monospace" rows="12"></textarea></div><div class="modal-footer border-0 p-3"><button id="importLoadBtn" class="btn btn-primary w-100 fw-bold py-2">LOAD WORKSPACE</button></div></div></div></div>
 
 <script>
 const $=id=>document.getElementById(id);
@@ -103,20 +119,20 @@ const toast=m=>{
 };
 
 const schemaEditor = new JSONEditor($("schemaEditor"), { mode: "code", mainMenuBar: false });
-const transformerEditor = new JSONEditor($("transformerEditor"), { mode: "text", mainMenuBar: false });
+const transformerAce = ace.edit("transformerAce");
+transformerAce.setTheme("ace/theme/chrome");
+transformerAce.session.setMode("ace/mode/javascript");
+
 const editor = new Drawflow($("drawflow")); editor.start(); editor.reroute = true;
 
-/* --- ZOOM LOGIC --- */
 const updateZoomLabel = () => { $("zoomReset").innerText = Math.round(editor.zoom * 100) + "%"; };
 $("zoomIn").onclick = () => { editor.zoom_in(); updateZoomLabel(); };
 $("zoomOut").onclick = () => { editor.zoom_out(); updateZoomLabel(); };
 $("zoomReset").onclick = () => { editor.zoom_reset(); updateZoomLabel(); };
-// Support mouse wheel zoom update
-$("drawflow").addEventListener('wheel', e => { updateZoomLabel(); });
+$("drawflow").addEventListener('wheel', e => { updateZoomLabel(); }, {passive: true});
 
-const genId = () => 'node_'+Math.random().toString(16).slice(2,8);
 const htmlOf = (d) => `
-  <div class="node-header"><span><i class="bi bi-robot"></i> ${d.nodeId}</span><div class="node-actions"><i class="bi bi-copy btn-icon-sm duplicate-icon me-1"></i><i class="bi bi-gear-fill btn-icon-sm edit-icon"></i></div></div>
+  <div class="node-header"><span><i class="bi bi-robot"></i> ${d.nodeId}</span><div class="node-actions"><i class="bi bi-gear-fill btn-icon-sm edit-icon"></i></div></div>
   <div class="node-body">${d.prompt.substring(0, 30)}...</div>
 `;
 
@@ -124,14 +140,13 @@ const centerFlow = () => {
     const nodes = Object.values(editor.drawflow.drawflow.Home.data);
     if (!nodes.length) return;
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    nodes.forEach(n => {
-        minX = Math.min(minX, n.pos_x); maxX = Math.max(maxX, n.pos_x + 220);
-        minY = Math.min(minY, n.pos_y); maxY = Math.max(maxY, n.pos_y + 100);
-    });
+    nodes.forEach(n => { minX = Math.min(minX, n.pos_x); maxX = Math.max(maxX, n.pos_x + 220); minY = Math.min(minY, n.pos_y); maxY = Math.max(maxY, n.pos_y + 100); });
     editor.canvas_x = (editor.container.offsetWidth / 2) - ((minX + maxX) / 2);
     editor.canvas_y = (editor.container.offsetHeight / 2) - ((minY + maxY) / 2);
     editor.precanvas.style.transform = `translate(${editor.canvas_x}px, ${editor.canvas_y}px) scale(${editor.zoom})`;
+    updateZoomLabel();
 };
+$("centerBtn").onclick = centerFlow;
 
 const loadFlow = (raw) => {
     try {
@@ -146,8 +161,18 @@ const loadFlow = (raw) => {
         const map = {}; const levelCount = {};
         flow.nodes.forEach(n => {
             const level = getLevel(n.id); levelCount[level] = (levelCount[level] || 0) + 1;
-            const ap = n.resolver?.inline?.aiPrompt || {}; const mc = ap.modelConfiguration || {}; const vAi = mc.providerConfiguration?.vertexAi || {};
-            const d = { nodeId: n.id, prompt: ap.promptTemplate || "", schema: ap.responseFormat?.json?.schema || {type:"object"}, transformer: n.resolver?.inputTransformer?.code || "($)", modelId: mc.modelId || "gemini-2.5-pro", project: vAi.project || "qover-ai-edp-enrichment", location: vAi.location || "europe-west1" };
+            const ap = n.resolver?.inline?.aiPrompt || {};
+            const mc = ap.modelConfiguration || {};
+            const vAi = mc.providerConfiguration?.vertexAi || {};
+            const d = { 
+                nodeId: n.id, 
+                prompt: ap.promptTemplate || "", 
+                schema: ap.responseFormat?.json?.schema || {type:"object"}, 
+                transformer: n.resolver?.inputTransformer?.code || "($)", 
+                modelId: mc.modelId || "gemini-2.0-flash-001",
+                project: vAi.project || "qover-ai-agent-test",
+                location: vAi.location || "europe-west1"
+            };
             map[n.id] = editor.addNode("agent", 1, 1, level * 350, (levelCount[level]-1) * 150, "agent", d, htmlOf(d));
         });
         flow.links.forEach(l => { if(map[l.fromNodeId] && map[l.toNodeId]) editor.addConnection(map[l.fromNodeId], map[l.toNodeId], "output_1", "input_1"); });
@@ -155,40 +180,48 @@ const loadFlow = (raw) => {
     } catch(e) { console.error(e); }
 };
 
-const initialFlow = { "inline": { "flow": { "nodes": [ { "id": "node_france", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Weather in France?", "responseFormat": { "json": { "schema": { "type": "object" } } } } } } }, { "id": "node_summary", "resolver": { "inputTransformer": { "code": "($)" }, "inline": { "aiPrompt": { "promptTemplate": "Summarize result.", "responseFormat": { "json": { "schema": { "type": "object" } } } } } } } ], "links": [ { "fromNodeId": "node_france", "toNodeId": "node_summary" } ] } } };
-window.onload = () => loadFlow(initialFlow);
-$("centerBtn").onclick = centerFlow;
-
 let editing = null;
-function openForm(edit=false, id=null){
-  editing=edit?id:null; $("nodeForm").style.display="flex";
+function openEditor(edit=false, id=null){
+  editing = edit ? id : null;
+  $("nodeEditorOverlay").style.display = "flex";
   if(edit){
-    const d=editor.getNodeFromId(id).data;
-    $("nodeIdInput").value=d.nodeId; $("nodeIdInput").readOnly=true;
-    $("promptInput").value=d.prompt; schemaEditor.set(d.schema);
-    transformerEditor.setText(d.transformer);
-    $("modelIdInput").value=d.modelId; $("projectInput").value=d.project; $("locationInput").value=d.location;
-    $("deleteBtn").style.display="flex"; $("copyBtn").style.display="flex";
+    const d = editor.getNodeFromId(id).data;
+    $("nodeIdInput").value = d.nodeId; $("nodeIdInput").readOnly = true;
+    $("promptInput").value = d.prompt; schemaEditor.set(d.schema);
+    transformerAce.setValue(d.transformer || "($)", -1);
+    $("modelIdInput").value = d.modelId; $("projectInput").value = d.project; $("locationInput").value = d.location;
+    $("deleteBtn").style.display = "block";
   } else {
-    $("nodeIdInput").value=genId(); $("nodeIdInput").readOnly=false; $("promptInput").value=""; schemaEditor.set({type:"object"}); transformerEditor.setText("($)"); $("deleteBtn").style.display="none";
+    $("nodeIdInput").value = ""; $("nodeIdInput").readOnly = false;
+    $("promptInput").value = ""; schemaEditor.set({type:"object"});
+    transformerAce.setValue("($)", -1); $("deleteBtn").style.display = "none";
   }
 }
-$("nodeForm").onsubmit=e=>{
-  e.preventDefault();
-  const d={ nodeId:$("nodeIdInput").value, prompt:$("promptInput").value, schema:schemaEditor.get(), transformer:transformerEditor.getText(), modelId:$("modelIdInput").value, project:$("projectInput").value, location:$("locationInput").value };
-  if(editing===null) editor.addNode("agent",1,1,200,200,"agent",d,htmlOf(d));
-  else { editor.getNodeFromId(editing).data=d; document.getElementById("node-"+editing).querySelector(".drawflow_content_node").innerHTML=htmlOf(d); }
-  $("nodeForm").style.display="none";
+
+$("saveBtn").onclick = () => {
+    const d = { 
+        nodeId: $("nodeIdInput").value || 'node_'+Math.random().toString(16).slice(2,8), 
+        prompt: $("promptInput").value, 
+        schema: schemaEditor.get(), 
+        transformer: transformerAce.getValue(), 
+        modelId: $("modelIdInput").value,
+        project: $("projectInput").value,
+        location: $("locationInput").value
+    };
+    if(!editing) editor.addNode("agent", 1, 1, 100, 100, "agent", d, htmlOf(d));
+    else { editor.getNodeFromId(editing).data = d; document.getElementById("node-"+editing).querySelector(".drawflow_content_node").innerHTML = htmlOf(d); }
+    $("nodeEditorOverlay").style.display = "none";
 };
-$("deleteBtn").onclick = () => { if (editing) { editor.removeNodeId("node-" + editing); $("nodeForm").style.display = "none"; editing = null; } };
-$("copyBtn").onclick = () => { if (editing) { const orig = editor.getNodeFromId(editing); const nd = JSON.parse(JSON.stringify(orig.data)); nd.nodeId = genId(); editor.addNode("agent", 1, 1, orig.pos_x + 40, orig.pos_y + 40, "agent", nd, htmlOf(nd)); $("nodeForm").style.display = "none"; } };
-$("addBtn").onclick=()=>openForm(false);
-$("cancelBtn").onclick=()=>{$("nodeForm").style.display="none"; editing=null;};
+
+$("cancelBtn").onclick = () => $("nodeEditorOverlay").style.display = "none";
+$("deleteBtn").onclick = () => { if(editing){ editor.removeNodeId("node-"+editing); $("nodeEditorOverlay").style.display = "none"; } };
+$("addBtn").onclick = () => openEditor(false);
+
 $("drawflow").addEventListener("click",e=>{
-  const ic=e.target.closest(".edit-icon"), dic=e.target.closest(".duplicate-icon"), nid=e.target.closest(".drawflow-node")?.id.replace("node-","");
-  if(ic && nid) openForm(true, nid);
-  if(dic && nid) { const o=editor.getNodeFromId(nid); const nd=JSON.parse(JSON.stringify(o.data)); nd.nodeId=genId(); editor.addNode("agent",1,1,o.pos_x+40,o.pos_y+40,"agent",nd,htmlOf(nd)); toast("Duplicated"); }
+  const ic=e.target.closest(".edit-icon"), nid=e.target.closest(".drawflow-node")?.id.replace("node-","");
+  if(ic && nid) openEditor(true, nid);
 });
+
 $("exportBtn").onclick=()=>{
   const nodes=[], links=[], data = editor.drawflow.drawflow.Home.data;
   Object.values(data).forEach(n=>{
@@ -197,11 +230,34 @@ $("exportBtn").onclick=()=>{
     Object.values(n.outputs).forEach(o=>o.connections.forEach(c=>{ links.push({ fromNodeId: d.nodeId, toNodeId: data[c.node].data.nodeId }); }));
   });
   navigator.clipboard.writeText(JSON.stringify({ inline: { flow: { nodes, links } } }, null, 2));
-  toast("Copied!");
+  toast("Flow JSON Copied!");
 };
+
 const importModal = new bootstrap.Modal($("importModal"));
 $("importBtn").onclick = () => importModal.show();
-$("importLoadBtn").onclick = () => { loadFlow(JSON.parse($("importArea").value)); importModal.hide(); toast("Imported!"); };
+$("importLoadBtn").onclick = () => { loadFlow(JSON.parse($("importArea").value)); importModal.hide(); };
+
+// COMPLETE WEATHER EXAMPLE INITIAL LOAD
+const weatherInitial = {
+  "inline": {
+    "flow": {
+      "nodes": [
+        { "id": "node_france", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Give me current weather in France", "responseFormat": { "json": { "schema": { "type": "object", "properties": { "weatherFrance": { "type": "string" } }, "required": [ "weatherFrance" ] } } }, "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } },
+        { "id": "node_spain", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Give me current weather in Spain", "responseFormat": { "json": { "schema": { "type": "object", "properties": { "weatherSpain": { "type": "string" } }, "required": [ "weatherSpain" ] } } }, "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } },
+        { "id": "node_belgium", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Give me current weather in Belgium", "responseFormat": { "json": { "schema": { "type": "object", "properties": { "weatherBelgium": { "type": "string" } }, "required": [ "weatherBelgium" ] } } }, "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } },
+        { "id": "node_luxembourg", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Give me current weather in Luxembourg", "responseFormat": { "json": { "schema": { "type": "object", "properties": { "weatherLuxembourg": { "type": "string" } }, "required": [ "weatherLuxembourg" ] } } }, "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } },
+        { "id": "node_summary", "resolver": { "inputTransformer": { "code": "({ \"combinedWeather\": { \"France\": weatherFrance, \"Spain\": weatherSpain, \"Belgium\": weatherBelgium, \"Luxembourg\": weatherLuxembourg } })" }, "inline": { "aiPrompt": { "promptTemplate": "Summarize the weather for these countries: {{JSON.stringify(combinedWeather)}}", "responseFormat": { "json": { "schema": { "type": "object", "properties": { "regionalSummary": { "type": "string" } }, "required": [ "regionalSummary" ] } } }, "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } }
+      ],
+      "links": [
+        { "fromNodeId": "node_france", "toNodeId": "node_summary" },
+        { "fromNodeId": "node_spain", "toNodeId": "node_summary" },
+        { "fromNodeId": "node_belgium", "toNodeId": "node_summary" },
+        { "fromNodeId": "node_luxembourg", "toNodeId": "node_summary" }
+      ]
+    }
+  }
+};
+window.onload = () => loadFlow(weatherInitial);
 </script>
 </body>
 </html>
