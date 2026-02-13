@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flow Studio Pro</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/jsoneditor@9.10.0/dist/jsoneditor.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/jsoneditor@9.10.0/dist/jsoneditor.min.js"></script>
+
+  <style>
+    :root { --primary: #4361ee; --bg-canvas: #f8f9fb; --panel-bg: #ffffff; --border: #e5e7eb; }
+    body, html { height: 100%; margin: 0; font-family: 'Inter', sans-serif; overflow: hidden; }
+    #app { display: flex; height: 100vh; width: 100vw; }
+    
+    .top-bar {
+      position: absolute; top: 16px; left: 16px; right: 16px; height: 64px; 
+      background: rgba(255,255,255,0.85); backdrop-filter: blur(12px); 
+      border: 1px solid var(--border); border-radius: 12px; z-index: 100; 
+      display: flex; align-items: center; padding: 0 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+    }
+
+    #drawflow { flex: 1; height: 100%; background-color: var(--bg-canvas); background-image: radial-gradient(#d1d5db 1px, transparent 1px); background-size: 24px 24px; }
+
+    #nodeForm { width: 650px; background: var(--panel-bg); border-left: 1px solid var(--border); display: none; flex-direction: column; height: 100%; z-index: 101; }
+    .form-content { padding: 24px; overflow-y: auto; flex: 1; }
+
+    .drawflow-node { background: #fff !important; border: 1px solid #dee2e6 !important; border-radius: 10px !important; width: 220px !important; padding: 0 !important; }
+    .drawflow-node.selected { border: 2px solid var(--primary) !important; }
+    .node-header { background: var(--primary); color: white; padding: 10px 12px; border-radius: 9px 9px 0 0; font-size: 0.85rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+    .node-body { padding: 14px; font-size: 0.8rem; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    
+    .btn-icon-sm { cursor: pointer; font-size: 0.9rem; opacity: 0.8; transition: opacity 0.2s; }
+    .btn-icon-sm:hover { opacity: 1; }
+    .btn-icon { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
+
+    .jsoneditor { border: 1px solid #dee2e6 !important; height: 100%; }
+    .editor-container { width: 100%; margin-bottom: 24px; }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <div class="top-bar justify-content-between">
+    <div class="d-flex align-items-center gap-3">
+      <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-terminal-fill me-2"></i>Flow Studio Pro</h6>
+      <button id="addBtn" class="btn btn-primary btn-sm rounded-pill px-3">Add Node</button>
+      <button id="centerBtn" class="btn btn-outline-secondary btn-sm rounded-pill px-3" title="Center View">
+        <i class="bi bi-fullscreen-exit"></i>
+      </button>
+    </div>
+    <div class="d-flex gap-2">
+      <button id="importBtn" class="btn btn-light btn-sm border">Import</button>
+      <button id="exportBtn" class="btn btn-dark btn-sm rounded-pill px-4">Export JSON</button>
+    </div>
+  </div>
+
+  <div id="drawflow"></div>
+
+  <form id="nodeForm">
+    <div class="form-content">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 id="formTitle" class="mb-0 fw-bold text-dark">Node Configuration</h5>
+        <button type="button" class="btn-close" id="cancelBtn"></button>
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label small fw-bold text-muted">NODE ID</label>
+        <input required class="form-control bg-light border-0 fw-bold" id="nodeIdInput">
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label small fw-bold text-muted">PROMPT TEMPLATE</label>
+        <textarea required rows="3" class="form-control" id="promptInput"></textarea>
+      </div>
+
+      <div class="editor-container">
+        <label class="form-label small fw-bold text-muted">INPUT TRANSFORMER (JSONATA)</label>
+        <div id="transformerEditor" style="height: 400px;" class="rounded shadow-sm"></div>
+      </div>
+
+      <div class="editor-container">
+        <label class="form-label small fw-bold text-muted">OUTPUT JSON SCHEMA</label>
+        <div id="schemaEditor" style="height: 250px;" class="rounded shadow-sm"></div>
+      </div>
+
+      <div class="accordion accordion-flush border rounded mb-3" id="advAccordion">
+        <div class="accordion-item">
+          <h2 class="accordion-header"><button class="accordion-button collapsed py-2 small fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAdv">Advanced Settings</button></h2>
+          <div id="collapseAdv" class="accordion-collapse collapse">
+            <div class="accordion-body p-2 bg-light">
+              <input class="form-control form-control-sm mb-2" id="modelIdInput" placeholder="Model ID">
+              <input class="form-control form-control-sm mb-2" id="projectInput" placeholder="Project Name">
+              <input class="form-control form-control-sm" id="locationInput" placeholder="Location">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="p-3 border-top bg-light d-flex gap-2">
+      <button type="submit" class="btn btn-primary flex-grow-1 fw-bold">APPLY CHANGES</button>
+      <button type="button" class="btn btn-outline-secondary btn-icon" id="copyBtn" title="Duplicate"><i class="bi bi-copy"></i></button>
+      <button type="button" class="btn btn-danger btn-icon" id="deleteBtn" title="Delete"><i class="bi bi-trash"></i></button>
+    </div>
+  </form>
+</div>
+
+<div class="modal fade" id="importModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content"><div class="modal-body"><textarea id="importArea" class="form-control font-monospace" rows="15" placeholder="Paste JSON here..."></textarea></div><div class="modal-footer"><button id="importLoadBtn" class="btn btn-primary w-100 fw-bold">LOAD FLOW</button></div></div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const toast=m=>{
+  const t=document.createElement('div'); t.className='toast align-items-center text-bg-dark border-0 position-fixed bottom-0 start-50 translate-middle-x mb-4 shadow-lg';
+  t.innerHTML=`<div class="d-flex"><div class="toast-body">${m}</div></div>`;
+  document.body.appendChild(t); bootstrap.Toast.getOrCreateInstance(t,{delay:2000}).show();
+  t.addEventListener('hidden.bs.toast',()=>t.remove());
+};
+
+const schemaEditor = new JSONEditor($("schemaEditor"), { mode: "code", mainMenuBar: false });
+const transformerEditor = new JSONEditor($("transformerEditor"), { mode: "text", mainMenuBar: false });
+const editor = new Drawflow($("drawflow")); editor.start(); editor.reroute = true;
+
+const genId = () => 'node_'+Math.random().toString(16).slice(2,8);
+const htmlOf = (d) => `
+  <div class="node-header"><span><i class="bi bi-robot"></i> ${d.nodeId}</span><div class="node-actions"><i class="bi bi-copy btn-icon-sm duplicate-icon me-1"></i><i class="bi bi-gear-fill btn-icon-sm edit-icon"></i></div></div>
+  <div class="node-body">${d.prompt.substring(0, 35)}...</div>
+`;
+
+let editing = null;
+
+/* CENTERING LOGIC */
+const centerFlow = () => {
+    const data = editor.drawflow.drawflow.Home.data;
+    const nodes = Object.values(data);
+    if (nodes.length === 0) return;
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    nodes.forEach(n => {
+        minX = Math.min(minX, n.pos_x);
+        maxX = Math.max(maxX, n.pos_x + 220); // 220 is node width
+        minY = Math.min(minY, n.pos_y);
+        maxY = Math.max(maxY, n.pos_y + 100); // approx node height
+    });
+
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    
+    // Zoom is 1 by default, adjusting canvas offset
+    editor.canvas_x = (editor.container.offsetWidth / 2) - (centerX * editor.zoom);
+    editor.canvas_y = (editor.container.offsetHeight / 2) - (centerY * editor.zoom);
+    editor.updateConnectionNodes('node-Home'); // Force refresh
+    editor.precanvas.style.transform = "translate(" + editor.canvas_x + "px, " + editor.canvas_y + "px) scale(" + editor.zoom + ")";
+};
+
+const loadFlow = (raw) => {
+    try {
+        const flow = raw?.inline?.flow || raw;
+        editor.import({ "drawflow": { "Home": { "data": {} } } });
+        const map={}; 
+        flow.nodes.forEach((n, i) => {
+            const ap = n.resolver?.inline?.aiPrompt || {};
+            const mc = ap.modelConfiguration || {};
+            const vAi = mc.providerConfiguration?.vertexAi || {};
+            const d = {
+                nodeId: n.id, prompt: ap.promptTemplate || "",
+                schema: ap.responseFormat?.json?.schema || {type:"object"},
+                transformer: n.resolver?.inputTransformer?.code || "($)",
+                modelId: mc.modelId || "gemini-2.0-flash-001",
+                project: vAi.project || "qover-ai-agent-test",
+                location: vAi.location || "europe-west1"
+            };
+            const posX = n.id === 'node_summary' ? 650 : 0;
+            const posY = n.id === 'node_summary' ? 240 : (i * 140);
+            const internalId = editor.addNode("agent", 1, 1, posX, posY, "agent", d, htmlOf(d));
+            map[n.id] = internalId;
+        });
+        flow.links.forEach(l => {
+            if(map[l.fromNodeId] && map[l.toNodeId]) editor.addConnection(map[l.fromNodeId], map[l.toNodeId], "output_1", "input_1");
+        });
+        // Center after a small delay to ensure DOM is ready
+        setTimeout(centerFlow, 50);
+    } catch(e) { console.error(e); }
+};
+
+const weatherInitial = {
+  "inline": {
+    "flow": {
+      "nodes": [
+        { "id": "node_france", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Give me current weather in France", "responseFormat": { "json": { "schema": { "type": "object", "properties": { "weatherFrance": { "type": "string" } }, "required": ["weatherFrance"] } } }, "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } },
+        { "id": "node_spain", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Give me current weather in Spain", "responseFormat": { "json": { "schema": { "type": "object", "properties": { "weatherSpain": { "type": "string" } }, "required": ["weatherSpain"] } } }, "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } },
+        { "id": "node_belgium", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Give me current weather in Belgium", "responseFormat": { "json": { "schema": { "type": "object", "properties": { "weatherBelgium": { "type": "string" } }, "required": ["weatherBelgium"] } } }, "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } },
+        { "id": "node_luxembourg", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Give me current weather in Luxembourg", "responseFormat": { "json": { "schema": { "type": "object", "properties": { "weatherLuxembourg": { "type": "string" } }, "required": ["weatherLuxembourg"] } } }, "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } },
+        { "id": "node_summary", "resolver": { "inputTransformer": { "code": "({ \"combinedWeather\": { \"France\": weatherFrance, \"Spain\": weatherSpain, \"Belgium\": weatherBelgium, \"Luxembourg\": weatherLuxembourg } })" }, "inline": { "aiPrompt": { "promptTemplate": "Summarize the weather for these countries based only on this data: {{JSON.stringify(combinedWeather)}}", "responseFormat": { "json": { "schema": { "type": "object", "properties": { "regionalSummary": { "type": "string" } }, "required": ["regionalSummary"] } } }, "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } }
+      ],
+      "links": [
+        { "fromNodeId": "node_france", "toNodeId": "node_summary" },
+        { "fromNodeId": "node_spain", "toNodeId": "node_summary" },
+        { "fromNodeId": "node_belgium", "toNodeId": "node_summary" },
+        { "fromNodeId": "node_luxembourg", "toNodeId": "node_summary" }
+      ]
+    }
+  }
+};
+
+window.onload = () => loadFlow(weatherInitial);
+$("centerBtn").onclick = centerFlow;
+
+function openForm(edit=false, id=null){
+  editing=edit?id:null; $("nodeForm").style.display="flex";
+  if(edit){
+    const d=editor.getNodeFromId(id).data;
+    $("nodeIdInput").value=d.nodeId; $("nodeIdInput").readOnly=true;
+    $("promptInput").value=d.prompt; schemaEditor.set(d.schema || {type:"object"});
+    transformerEditor.setText(d.transformer || "($)");
+    $("modelIdInput").value=d.modelId; $("projectInput").value=d.project; $("locationInput").value=d.location;
+    $("deleteBtn").style.display="flex"; $("copyBtn").style.display="flex";
+  } else {
+    $("nodeIdInput").value=genId(); $("nodeIdInput").readOnly=false;
+    $("promptInput").value=""; schemaEditor.set({type:"object"});
+    transformerEditor.setText("($)"); $("deleteBtn").style.display="none";
+  }
+}
+
+$("nodeForm").onsubmit=e=>{
+  e.preventDefault();
+  const d={ nodeId:$("nodeIdInput").value, prompt:$("promptInput").value, schema:schemaEditor.get(), transformer:transformerEditor.getText(), modelId:$("modelIdInput").value, project:$("projectInput").value, location:$("locationInput").value };
+  if(editing===null) editor.addNode("agent",1,1,200,200,"agent",d,htmlOf(d));
+  else { editor.getNodeFromId(editing).data=d; document.getElementById("node-"+editing).querySelector(".drawflow_content_node").innerHTML=htmlOf(d); }
+  $("nodeForm").style.display="none";
+};
+
+$("deleteBtn").onclick = () => {
+    if (editing) {
+        editor.removeNodeId("node-" + editing);
+        $("nodeForm").style.display = "none";
+        editing = null;
+        toast("Node Deleted");
+    }
+};
+
+$("copyBtn").onclick = () => {
+    if (editing) {
+        const orig = editor.getNodeFromId(editing);
+        const nd = JSON.parse(JSON.stringify(orig.data)); nd.nodeId = genId();
+        editor.addNode("agent", 1, 1, orig.pos_x + 40, orig.pos_y + 40, "agent", nd, htmlOf(nd));
+        $("nodeForm").style.display = "none";
+    }
+};
+
+$("addBtn").onclick=()=>openForm(false);
+$("cancelBtn").onclick=()=>{$("nodeForm").style.display="none"; editing=null;};
+
+$("drawflow").addEventListener("click",e=>{
+  const ic=e.target.closest(".edit-icon"), dic=e.target.closest(".duplicate-icon"), nid=e.target.closest(".drawflow-node")?.id.replace("node-","");
+  if(ic && nid) openForm(true, nid);
+  if(dic && nid) { 
+    const orig=editor.getNodeFromId(nid); 
+    const nd=JSON.parse(JSON.stringify(orig.data)); nd.nodeId=genId(); 
+    editor.addNode("agent",1,1,orig.pos_x+40,orig.pos_y+40,"agent",nd,htmlOf(nd)); toast("Duplicated"); 
+  }
+});
+
+$("exportBtn").onclick=()=>{
+  const nodes=[], links=[], data = editor.drawflow.drawflow.Home.data;
+  Object.values(data).forEach(n=>{
+    const d = n.data;
+    nodes.push({ id: d.nodeId, resolver: { inputTransformer: { code: d.transformer }, inline: { aiPrompt: { promptTemplate: d.prompt, responseFormat: { json: { schema: d.schema } }, modelConfiguration: { modelId: d.modelId, providerConfiguration: { vertexAi: { project: d.project, location: d.location } } } } } } });
+    Object.values(n.outputs).forEach(o=>o.connections.forEach(c=>{ links.push({ fromNodeId: d.nodeId, toNodeId: data[c.node].data.nodeId }); }));
+  });
+  navigator.clipboard.writeText(JSON.stringify({ inline: { flow: { nodes, links } } }, null, 2));
+  toast("Copied to clipboard!");
+};
+
+const importModal = new bootstrap.Modal($("importModal"));
+$("importBtn").onclick = () => importModal.show();
+$("importLoadBtn").onclick = () => { loadFlow(JSON.parse($("importArea").value)); importModal.hide(); toast("Imported!"); };
+</script>
+</body>
+</html>
