@@ -42,6 +42,8 @@
     .drawflow-node { background: #fff !important; border: 1px solid #dee2e6 !important; border-radius: 10px !important; width: 220px !important; padding: 0 !important; }
     .node-header { background: var(--primary); color: white; padding: 10px 12px; border-radius: 9px 9px 0 0; font-size: 0.85rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
     .node-body { padding: 14px; font-size: 0.8rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .btn-icon-sm { cursor: pointer; font-size: 0.9rem; opacity: 0.8; transition: opacity 0.2s; }
+    .btn-icon-sm:hover { opacity: 1; }
     
     #transformerAce { width: 100%; height: 320px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
   </style>
@@ -58,7 +60,7 @@
         <button id="zoomReset" class="btn btn-light btn-sm border-start border-end fw-bold" style="min-width: 65px;">100%</button>
         <button id="zoomIn" class="btn btn-light btn-sm border-0"><i class="bi bi-plus-lg"></i></button>
       </div>
-      <button id="centerBtn" class="btn btn-outline-secondary btn-sm rounded-pill px-3 shadow-sm"><i class="bi bi-fullscreen-exit"></i></button>
+      <button id="centerBtn" class="btn btn-outline-secondary btn-sm rounded-pill px-3 shadow-sm" title="Center View"><i class="bi bi-fullscreen-exit"></i></button>
     </div>
     <div class="d-flex gap-2">
       <button id="importBtn" class="btn btn-light btn-sm border shadow-sm">Import</button>
@@ -78,6 +80,7 @@
       </div>
     </div>
     <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary btn-sm px-3" id="innerCopyBtn">Duplicate</button>
       <button class="btn btn-outline-danger btn-sm px-3" id="deleteBtn">Delete</button>
       <button class="btn btn-light btn-sm border px-3" id="cancelBtn">Cancel</button>
       <button class="btn btn-primary btn-sm px-4 fw-bold" id="saveBtn">Save Changes</button>
@@ -99,9 +102,9 @@
       </div>
       <div class="p-3 bg-white border rounded shadow-sm">
         <label class="small fw-bold mb-2 text-muted text-uppercase" style="font-size: 0.7rem;">Model Configuration</label>
-        <input class="form-control form-control-sm mb-2" id="modelIdInput" placeholder="gemini-2.0-flash-001">
+        <input class="form-control form-control-sm mb-2" id="modelIdInput" placeholder="Model ID">
         <input class="form-control form-control-sm mb-2" id="projectInput" placeholder="Project Name">
-        <input class="form-control form-control-sm" id="locationInput" placeholder="europe-west1">
+        <input class="form-control form-control-sm" id="locationInput" placeholder="Location">
       </div>
     </div>
   </div>
@@ -131,8 +134,10 @@ $("zoomOut").onclick = () => { editor.zoom_out(); updateZoomLabel(); };
 $("zoomReset").onclick = () => { editor.zoom_reset(); updateZoomLabel(); };
 $("drawflow").addEventListener('wheel', e => { updateZoomLabel(); }, {passive: true});
 
+const genId = () => 'node_'+Math.random().toString(16).slice(2,8);
+
 const htmlOf = (d) => `
-  <div class="node-header"><span><i class="bi bi-robot"></i> ${d.nodeId}</span><div class="node-actions"><i class="bi bi-gear-fill btn-icon-sm edit-icon"></i></div></div>
+  <div class="node-header"><span><i class="bi bi-robot"></i> ${d.nodeId}</span><div class="node-actions"><i class="bi bi-copy btn-icon-sm duplicate-icon me-1"></i><i class="bi bi-gear-fill btn-icon-sm edit-icon"></i></div></div>
   <div class="node-body">${d.prompt.substring(0, 30)}...</div>
 `;
 
@@ -152,21 +157,20 @@ const loadFlow = (raw) => {
     try {
         const flow = raw?.inline?.flow || raw;
         editor.import({ "drawflow": { "Home": { "data": {} } } });
-        const levels = {};
+        const map = {}; const levels = {};
         const getLevel = (id) => {
             if (levels[id] !== undefined) return levels[id];
             const incoming = flow.links.filter(l => l.toNodeId === id);
             return levels[id] = incoming.length === 0 ? 0 : Math.max(...incoming.map(l => getLevel(l.fromNodeId))) + 1;
         };
-        const map = {}; const levelCount = {};
+        const levelCount = {};
         flow.nodes.forEach(n => {
             const level = getLevel(n.id); levelCount[level] = (levelCount[level] || 0) + 1;
             const ap = n.resolver?.inline?.aiPrompt || {};
             const mc = ap.modelConfiguration || {};
             const vAi = mc.providerConfiguration?.vertexAi || {};
             const d = { 
-                nodeId: n.id, 
-                prompt: ap.promptTemplate || "", 
+                nodeId: n.id, prompt: ap.promptTemplate || "", 
                 schema: ap.responseFormat?.json?.schema || {type:"object"}, 
                 transformer: n.resolver?.inputTransformer?.code || "($)", 
                 modelId: mc.modelId || "gemini-2.0-flash-001",
@@ -186,27 +190,22 @@ function openEditor(edit=false, id=null){
   $("nodeEditorOverlay").style.display = "flex";
   if(edit){
     const d = editor.getNodeFromId(id).data;
-    $("nodeIdInput").value = d.nodeId; $("nodeIdInput").readOnly = true;
+    $("formTitle").innerText = "Edit Agent"; $("nodeIdInput").value = d.nodeId; $("nodeIdInput").readOnly = true;
     $("promptInput").value = d.prompt; schemaEditor.set(d.schema);
     transformerAce.setValue(d.transformer || "($)", -1);
     $("modelIdInput").value = d.modelId; $("projectInput").value = d.project; $("locationInput").value = d.location;
-    $("deleteBtn").style.display = "block";
+    $("deleteBtn").style.display = "block"; $("innerCopyBtn").style.display = "block";
   } else {
     $("nodeIdInput").value = ""; $("nodeIdInput").readOnly = false;
     $("promptInput").value = ""; schemaEditor.set({type:"object"});
-    transformerAce.setValue("($)", -1); $("deleteBtn").style.display = "none";
+    transformerAce.setValue("($)", -1); $("deleteBtn").style.display = "none"; $("innerCopyBtn").style.display = "none";
   }
 }
 
 $("saveBtn").onclick = () => {
     const d = { 
-        nodeId: $("nodeIdInput").value || 'node_'+Math.random().toString(16).slice(2,8), 
-        prompt: $("promptInput").value, 
-        schema: schemaEditor.get(), 
-        transformer: transformerAce.getValue(), 
-        modelId: $("modelIdInput").value,
-        project: $("projectInput").value,
-        location: $("locationInput").value
+        nodeId: $("nodeIdInput").value || genId(), prompt: $("promptInput").value, schema: schemaEditor.get(), 
+        transformer: transformerAce.getValue(), modelId: $("modelIdInput").value, project: $("projectInput").value, location: $("locationInput").value 
     };
     if(!editing) editor.addNode("agent", 1, 1, 100, 100, "agent", d, htmlOf(d));
     else { editor.getNodeFromId(editing).data = d; document.getElementById("node-"+editing).querySelector(".drawflow_content_node").innerHTML = htmlOf(d); }
@@ -215,11 +214,23 @@ $("saveBtn").onclick = () => {
 
 $("cancelBtn").onclick = () => $("nodeEditorOverlay").style.display = "none";
 $("deleteBtn").onclick = () => { if(editing){ editor.removeNodeId("node-"+editing); $("nodeEditorOverlay").style.display = "none"; } };
+
+// DUPLICATION LOGIC
+const duplicateNode = (nid) => {
+    const o = editor.getNodeFromId(nid); const nd = JSON.parse(JSON.stringify(o.data)); 
+    nd.nodeId = 'node_' + Math.random().toString(16).slice(2, 8);
+    editor.addNode("agent", 1, 1, o.pos_x + 40, o.pos_y + 40, "agent", nd, htmlOf(nd));
+    toast("Node Duplicated");
+};
+
+$("innerCopyBtn").onclick = () => { if(editing) { duplicateNode(editing); $("nodeEditorOverlay").style.display = "none"; } };
+
 $("addBtn").onclick = () => openEditor(false);
 
 $("drawflow").addEventListener("click",e=>{
-  const ic=e.target.closest(".edit-icon"), nid=e.target.closest(".drawflow-node")?.id.replace("node-","");
+  const ic=e.target.closest(".edit-icon"), dic=e.target.closest(".duplicate-icon"), nid=e.target.closest(".drawflow-node")?.id.replace("node-","");
   if(ic && nid) openEditor(true, nid);
+  if(dic && nid) duplicateNode(nid);
 });
 
 $("exportBtn").onclick=()=>{
@@ -237,22 +248,18 @@ const importModal = new bootstrap.Modal($("importModal"));
 $("importBtn").onclick = () => importModal.show();
 $("importLoadBtn").onclick = () => { loadFlow(JSON.parse($("importArea").value)); importModal.hide(); };
 
-// COMPLETE WEATHER EXAMPLE INITIAL LOAD
 const weatherInitial = {
   "inline": {
     "flow": {
       "nodes": [
-        { "id": "node_france", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Give me current weather in France", "responseFormat": { "json": { "schema": { "type": "object", "properties": { "weatherFrance": { "type": "string" } }, "required": [ "weatherFrance" ] } } }, "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } },
-        { "id": "node_spain", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Give me current weather in Spain", "responseFormat": { "json": { "schema": { "type": "object", "properties": { "weatherSpain": { "type": "string" } }, "required": [ "weatherSpain" ] } } }, "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } },
-        { "id": "node_belgium", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Give me current weather in Belgium", "responseFormat": { "json": { "schema": { "type": "object", "properties": { "weatherBelgium": { "type": "string" } }, "required": [ "weatherBelgium" ] } } }, "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } },
-        { "id": "node_luxembourg", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Give me current weather in Luxembourg", "responseFormat": { "json": { "schema": { "type": "object", "properties": { "weatherLuxembourg": { "type": "string" } }, "required": [ "weatherLuxembourg" ] } } }, "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } },
-        { "id": "node_summary", "resolver": { "inputTransformer": { "code": "({ \"combinedWeather\": { \"France\": weatherFrance, \"Spain\": weatherSpain, \"Belgium\": weatherBelgium, \"Luxembourg\": weatherLuxembourg } })" }, "inline": { "aiPrompt": { "promptTemplate": "Summarize the weather for these countries: {{JSON.stringify(combinedWeather)}}", "responseFormat": { "json": { "schema": { "type": "object", "properties": { "regionalSummary": { "type": "string" } }, "required": [ "regionalSummary" ] } } }, "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } }
+        { "id": "node_france", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "France weather", "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } },
+        { "id": "node_spain", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Spain weather", "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } },
+        { "id": "node_belgium", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Belgium weather", "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } },
+        { "id": "node_luxembourg", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Luxembourg weather", "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } },
+        { "id": "node_summary", "resolver": { "inputTransformer": { "code": "({ \"combined\": { \"France\": weatherFrance, \"Spain\": weatherSpain, \"Belgium\": weatherBelgium, \"Luxembourg\": weatherLuxembourg } })" }, "inline": { "aiPrompt": { "promptTemplate": "Summarize result.", "modelConfiguration": { "modelId": "gemini-2.0-flash-001", "providerConfiguration": { "vertexAi": { "project": "qover-ai-agent-test", "location": "europe-west1" } } } } } } }
       ],
       "links": [
-        { "fromNodeId": "node_france", "toNodeId": "node_summary" },
-        { "fromNodeId": "node_spain", "toNodeId": "node_summary" },
-        { "fromNodeId": "node_belgium", "toNodeId": "node_summary" },
-        { "fromNodeId": "node_luxembourg", "toNodeId": "node_summary" }
+        { "fromNodeId": "node_france", "toNodeId": "node_summary" }, { "fromNodeId": "node_spain", "toNodeId": "node_summary" }, { "fromNodeId": "node_belgium", "toNodeId": "node_summary" }, { "fromNodeId": "node_luxembourg", "toNodeId": "node_summary" }
       ]
     }
   }
