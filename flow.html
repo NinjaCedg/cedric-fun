@@ -34,18 +34,29 @@
 
    
     /* Enhanced Figma-Style Node */
+/* Tightened Figma-Style Node */
 .drawflow-node {
     background: #ffffff !important;
     border: 1px solid #e2e8f0 !important;
-    border-radius: 12px !important;
+    border-radius: 10px !important; /* Slightly tighter rounding */
     padding: 0 !important;
-    width: 340px !important;
-    
-    /* THE DROP SHADOW */
-    /* format: x-offset y-offset blur spread color */
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 
-                0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
-  
+    width: 280px !important; /* Reduced from 340px */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Adjust Connection points to the new width */
+.drawflow-node .input { left: -8px !important; }
+.drawflow-node .output { right: -8px !important; }
+
+/* Constrain the body text so nodes don't grow too long */
+.node-body {
+    padding: 10px;
+    font-size: 0.7rem;
+    max-height: 80px; /* Increased slightly for readability */
+    overflow: hidden !important; /* Prevents scrollbar mess in overview */
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
 }
 
 
@@ -741,63 +752,58 @@ const htmlOf = (d) => {
 function importFromOriginalSchema(json) {
     if (!json.nodes) return;
     editor.clear();
+    
     const idMap = {};
     const levels = {};
+    const childrenOf = {};
 
-    // Initial level mapping
-    json.nodes.forEach(n => levels[n.id] = 0);
+    // 1. Build adjacency list for layout calculation
+    json.nodes.forEach(n => {
+        levels[n.id] = 0;
+        childrenOf[n.id] = [];
+    });
+    
     (json.links || []).forEach(l => {
-        levels[l.toNodeId] = Math.max(levels[l.toNodeId] || 0, (levels[l.fromNodeId] || 0) + 1);
+        childrenOf[l.fromNodeId].push(l.toNodeId);
     });
 
-    const counts = {};
-    const processedIds = new Set(); // Move this to the very top of the function
-
-    json.nodes.forEach(n => {
-        if (processedIds.has(n.id)) return;
-    processedIds.add(n.id);
-
-    const resolver = n.resolver || {};
-    const inline = resolver.inline || {};
-    
-    const hasApi = !!(inline.apiCall || resolver.apiCall);
-    const hasScript = !!(inline.script || resolver.script);
-    const hasPrompt = !!(inline.aiPrompt);
-
-    let nodeData = { nodeId: n.id };
-    let nodeClass = "agent"; 
-console.log("-- processing---")
-    console.log(n.id)
-    console.log(n);
-    console.log("----")
-
-    if (hasApi) {
-        nodeData.apiCall = inline.apiCall || resolver.apiCall;
-        nodeClass = "api-node";
-    } else if (hasScript) {
-        // SPECIFIC LOGIC FOR SCRIPT EXPRESSIONS
-        const scriptObj = inline.script || resolver.script;
-        nodeData.transformer = scriptObj.code;
-   
-        nodeData.isScriptOnly = true; // Flag for htmlOf
-        nodeData.language = scriptObj.language || "JSONATA";
-        nodeClass = "logic-node"; // New CSS class
-    } else if (hasPrompt) {
-        nodeData.prompt = inline.aiPrompt.promptTemplate;
-        nodeData.schema = inline.aiPrompt.responseFormat?.json?.schema;
-        nodeData.transformer = resolver.inputTransformer?.code || "($)";
+    // 2. Calculate "Depth" levels using a simple iterative pass
+    for (let i = 0; i < json.nodes.length; i++) {
+        (json.links || []).forEach(l => {
+            levels[l.toNodeId] = Math.max(levels[l.toNodeId], levels[l.fromNodeId] + 1);
+        });
     }
 
-    // Position and Add...
-    const lvl = levels[n.id] || 0;
-    counts[lvl] = (counts[lvl] || 0) + 1;
-    const xPos = 100 + (lvl * 420);
-    const yPos = 100 + (counts[lvl] * 240);
+    // 3. Group nodes by level to center them vertically
+    const nodesByLevel = {};
+    json.nodes.forEach(n => {
+        const lvl = levels[n.id];
+        if (!nodesByLevel[lvl]) nodesByLevel[lvl] = [];
+        nodesByLevel[lvl].push(n);
+    });
 
-    idMap[n.id] = editor.addNode(
-        nodeClass, 1, 1, xPos, yPos, nodeClass, nodeData, htmlOf(nodeData)
-    );
-});
+    // 4. Render Nodes with dynamic vertical centering
+    const canvasHeight = window.innerHeight;
+    const horizontalGap = 340; // Space between columns
+    const verticalGap = 160;   // Space between rows
+
+    Object.keys(nodesByLevel).forEach(lvl => {
+        const levelNodes = nodesByLevel[lvl];
+        const totalHeight = (levelNodes.length - 1) * verticalGap;
+        const startY = (canvasHeight / 2) - (totalHeight / 2); // Center column vertically
+
+        levelNodes.forEach((n, index) => {
+            let nodeData = buildNodeData(n); // Extract data mapping logic
+            let nodeClass = nodeData.isScriptOnly ? "logic-node" : (nodeData.apiCall ? "api-node" : "agent");
+
+            const xPos = 50 + (lvl * horizontalGap);
+            const yPos = startY + (index * verticalGap);
+
+            idMap[n.id] = editor.addNode(
+                nodeClass, 1, 1, xPos, yPos, nodeClass, nodeData, htmlOf(nodeData)
+            );
+        });
+    });
 
     // 5. Restore connections
     (json.links || []).forEach(l => { 
@@ -805,6 +811,26 @@ console.log("-- processing---")
             editor.addConnection(idMap[l.fromNodeId], idMap[l.toNodeId], "output_1", "input_1"); 
         }
     });
+}
+
+// Helper to keep the import function clean
+function buildNodeData(n) {
+    const resolver = n.resolver || {};
+    const inline = resolver.inline || {};
+    let data = { nodeId: n.id };
+
+    if (inline.apiCall || resolver.apiCall) {
+        data.apiCall = inline.apiCall || resolver.apiCall;
+    } else if (inline.script || resolver.script) {
+        const s = inline.script || resolver.script;
+        data.transformer = s.code;
+        data.isScriptOnly = true;
+    } else {
+        data.prompt = inline.aiPrompt?.promptTemplate;
+        data.schema = inline.aiPrompt?.responseFormat?.json?.schema;
+        data.transformer = resolver.inputTransformer?.code || "($)";
+    }
+    return data;
 }
 
 
