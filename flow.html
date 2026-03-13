@@ -372,11 +372,7 @@ const $ = id => document.getElementById(id);
   </div>
   <div class="editor-body">
     <div class="editor-main">
-        <div class="sidebar-label-row d-flex justify-content-between mb-2 align-items-center">
-            <label class="small fw-bold text-secondary uppercase">Input</label>
-            <button id="magicPromptBtn" class="btn btn-sm btn-outline-primary rounded-pill px-3"><i class="bi bi-magic"></i> AI Refine</button>
-        </div>
-
+    
 
         <div class="sidebar-label-row d-flex justify-content-between mb-2 align-items-center">
             <label class="small fw-bold text-secondary uppercase" id="mainEditorLabel">Input</label>
@@ -501,19 +497,13 @@ $("exportBtn").onclick = () => {
     a.click();
 };
 
-
-
-
-// RESTORED SIMULATION LOGIC
 async function runFullSimulation(rootInput) {
     const nodes = editor.export().drawflow.Home.data;
     let globalContext = JSON.parse(JSON.stringify(rootInput)); 
     const executed = new Set();
     
-    // Reset UI
     document.querySelectorAll('.node-result-tray').forEach(el => el.innerHTML = "");
     
-    // Initial Log Entry
     $("logContent").innerHTML = `
         <div class="log-entry" style="border-left-color: #f59e0b">
             <div class="log-title">PIPELINE START (ROOT CONTEXT)</div>
@@ -528,7 +518,6 @@ async function runFullSimulation(rootInput) {
         
         if (!readyNodes.length) break;
         
-        // Capture Snapshot for this parallel execution level
         const snapshot = JSON.parse(JSON.stringify(globalContext));
         const levelResults = [];
 
@@ -538,55 +527,86 @@ async function runFullSimulation(rootInput) {
             const d = nodes[id].data;
             
             try {
-                // 1. JSONata Mapping
+                // 1. JSONata Mapping (Input preparation)
                 const payload = await jsonata(d.transformer || "($)").evaluate(snapshot);
-                
-                // 2. Prompt Rendering
-                const renderedPrompt = d.prompt.replace(/\{\{(.*?)\}\}/g, (m, e) => {
-                    try { return new Function(...Object.keys(payload), `return ${e}`)(...Object.values(payload)); } catch { return m; }
-                });
+                let resultData;
+                let logTitle = `AGENT @${d.nodeId || d.id}`;
 
-                // 3. AI Execution
-                const aiRes = await callAI(renderedPrompt, d.schema);
-                const parsed = JSON.parse(aiRes);
-                
+                // --- BRANCH: API CALL vs AI AGENT ---
+                if (d.apiCall) {
+                    const http = d.apiCall.http;
+                    logTitle = `API CALL @${d.id} COMPLETED`;
+                    
+                    const response = await fetch(http.url, {
+                        method: http.method === "HTTP_METHOD_POST" ? "POST" : "GET",
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: http.method === "HTTP_METHOD_POST" ? JSON.stringify(payload) : null
+                    });
+
+                    if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+                    resultData = await response.json();
+
+                    // Specific Logging for API
+                    $("logContent").innerHTML += `
+                        <div class="log-entry" style="border-left-color: #38bdf8">
+                            <div class="log-title">${logTitle}</div>
+                            <span class="log-label" style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">1. Request URL</span>
+                            <div class="log-code" style="color: #38bdf8;">${http.url}</div>
+                            <span class="log-label" style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">2. Payload Sent</span>
+                            <code class="log-code">${JSON.stringify(payload, null, 2)}</code>
+                            <span class="log-label" style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">3. JSON Response</span>
+                            <code class="log-code" style="color: #10b981;">${JSON.stringify(resultData, null, 2)}</code>
+                        </div>`;
+                } 
+                else if (d.isScriptOnly) {
+                    // Handle pure JSONata nodes if they exist
+                    resultData = payload; 
+                    logTitle = `LOGIC @${d.nodeId} COMPLETED`;
+                }
+                else {
+                    // Standard AI Execution
+                    const renderedPrompt = d.prompt.replace(/\{\{(.*?)\}\}/g, (m, e) => {
+                        try { return new Function(...Object.keys(payload), `return ${e}`)(...Object.values(payload)); } catch { return m; }
+                    });
+
+                    const aiRes = await callAI(renderedPrompt, d.schema);
+                    resultData = JSON.parse(aiRes);
+
+                    // Deep Logging for AI
+                    $("logContent").innerHTML += `
+                        <div class="log-entry">
+                            <div class="log-title">${logTitle}</div>
+                            <span class="log-label" style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">1. Prompt</span>
+                            <div class="log-code" style="background: #1e1b4b;">${renderedPrompt}</div>
+                            <span class="log-label" style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">2. AI Result</span>
+                            <code class="log-code" style="color: #10b981;">${JSON.stringify(resultData, null, 2)}</code>
+                        </div>`;
+                }
+
                 // 4. Update Node UI
-                nodeEl.querySelector('.node-result-tray').innerText = JSON.stringify(parsed, null, 2);
+                nodeEl.querySelector('.node-result-tray').innerText = JSON.stringify(resultData, null, 2);
                 nodeEl.classList.replace('running', 'completed');
-                
-                // 5. DEEP LOGGING INJECTION
-                $("logContent").innerHTML += `
-                    <div class="log-entry">
-                        <div class="log-title">AGENT @${d.nodeId} COMPLETED</div>
-                        
-                        <span class="log-label" style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">1. Input Snapshot Seen</span>
-                        <code class="log-code" style="color: #e2e8f0; border-color: #334155;">${JSON.stringify(snapshot, null, 2)}</code>
+                levelResults.push(resultData);
 
-                        <span class="log-label" style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">2. JSONata Mapping Output</span>
-                        <code class="log-code" style="color: #38bdf8; border-color: #0c4a6e;">${JSON.stringify(payload, null, 2)}</code>
-
-                        <span class="log-label" style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">3. Final Rendered Prompt</span>
-                        <div class="log-code" style="color: #c084fc; border-color: #4c1d95; background: #1e1b4b;">${renderedPrompt}</div>
-
-                        <span class="log-label" style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">4. Model Result</span>
-                        <code class="log-code" style="color: #10b981; border-color: #064e3b;">${aiRes}</code>
-                    </div>`;
-
-                levelResults.push(parsed);
             } catch (e) { 
                 nodeEl.classList.remove('running');
+                nodeEl.classList.add('failed'); // You can add a failed class in CSS
                 $("logContent").innerHTML += `
                     <div class="log-entry" style="border-left-color: #ef4444">
-                        <div class="log-title text-danger">AGENT @${d.nodeId} FAILED</div>
+                        <div class="log-title text-danger">NODE FAILED</div>
                         <code class="log-code text-danger">${e.message}</code>
                     </div>`;
             }
             executed.add(id);
         }
-        // Commit results to global context for next level
         levelResults.forEach(r => Object.assign(globalContext, r));
     }
 }
+
+
+
 
 const callAI = async (prompt, schema) => {
     const token = localStorage.getItem("v_token");
