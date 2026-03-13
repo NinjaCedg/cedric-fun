@@ -3,235 +3,859 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Flow Studio Pro | AI Native Edition</title>
+  <title>AgentFlow Studio | stable-v2.6.3</title>
 
   <link href="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  
   <link href="https://cdn.jsdelivr.net/npm/jsoneditor@9.10.0/dist/jsoneditor.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/jsoneditor@9.10.0/dist/jsoneditor.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.3/ace.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsonata/jsonata.min.js"></script>
 
   <style>
-    :root { --primary: #4361ee; --bg-canvas: #f8f9fb; --panel-bg: #ffffff; --border: #e5e7eb; --magic: #8a2be2; }
-    body, html { height: 100%; margin: 0; font-family: 'Inter', sans-serif; overflow: hidden; }
-    #app { display: flex; height: 100vh; width: 100vw; }
-    
-    .top-bar {
-      position: absolute; top: 16px; left: 16px; right: 16px; height: 64px; 
-      background: rgba(255,255,255,0.85); backdrop-filter: blur(12px); 
-      border: 1px solid var(--border); border-radius: 12px; z-index: 100; 
-      display: flex; align-items: center; padding: 0 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+    :root { --primary: #2563eb; --bg-canvas: #f8fafc; --trace-bg: #0f172a; --trace-card: #1e293b; --trace-text: #f1f5f9; --trace-accent: #38bdf8; }
+    body, html { height: 100%; margin: 0; font-family: 'Inter', sans-serif; overflow: hidden; background: var(--bg-canvas); }
+    #app { position: relative; height: 100vh; width: 100vw; display: flex; flex-direction: column; }
+
+    .top-bar { 
+        position: fixed; top: 16px; left: 16px; right: 16px; height: 60px; 
+        background: rgba(255,255,255,0.98); backdrop-filter: blur(10px); 
+        border: 1px solid #e2e8f0; border-radius: 12px; 
+        z-index: 10000; display: flex; align-items: center; padding: 0 20px; 
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); 
     }
 
-    #drawflow { flex: 1; height: 100%; background-color: var(--bg-canvas); background-image: radial-gradient(#d1d5db 1px, transparent 1px); background-size: 24px 24px; }
-
-    #nodeEditorOverlay {
-      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: white; z-index: 2000; display: none; flex-direction: column;
-    }
-    .editor-header { padding: 16px 32px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-    .editor-body { flex: 1; display: flex; overflow: hidden; }
-    .editor-main { flex: 2; padding: 40px 60px; overflow-y: auto; border-right: 1px solid var(--border); }
-    .editor-sidebar { flex: 1; padding: 40px; background: #fcfcfd; overflow-y: auto; }
-    .prompt-textarea { width: 100%; border: none; outline: none; font-size: 1.15rem; line-height: 1.7; color: #1f2937; height: 100%; min-height: 600px; resize: none; }
-
-    .drawflow-node { background: #fff !important; border: 1px solid #dee2e6 !important; border-radius: 10px !important; width: 220px !important; padding: 0 !important; }
-    .node-header { background: var(--primary); color: white; padding: 10px 12px; border-radius: 9px 9px 0 0; font-size: 0.85rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
-    .node-body { padding: 14px; font-size: 0.8rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     
-    #transformerAce { width: 100%; height: 320px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
-    .btn-magic-add { background: var(--magic); color: white; border: none; }
-    .btn-magic-add:hover { background: #7b1fa2; color: white; }
-    .audit-log { font-family: monospace; background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 8px; max-height: 500px; overflow-y: auto; }
+
+    #drawflow { flex: 1; width: 100%; height: 100%; position: relative; z-index: 1; background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px; }
+
+   
+    /* Enhanced Figma-Style Node */
+.drawflow-node {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    padding: 0 !important;
+    width: 340px !important;
+    
+    /* THE DROP SHADOW */
+    /* format: x-offset y-offset blur spread color */
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 
+                0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  
+}
+
+
+/* Precise Alignment for Figma-style Cards */
+.drawflow-node .input,
+
+.drawflow-node .output {
+
+width: 14px !important;
+
+height: 14px !important;
+
+background: #ffffff !important;
+
+border: 3px solid #2563eb !important;
+
+border-radius: 50% !important;
+
+position: absolute;
+
+z-index: 999;
+
+
+/* ALIGNMENT LOGIC: Targeting the center of the white area */
+
+/* If header is 45px, 65% usually hits the visual center of the body */
+
+top: 65% !important;
+
+transform: translateY(-50%) !important;
+
+
+transition: all 0.2s ease;
+
+}
+
+/* Offset so they sit perfectly on the border line */
+.drawflow-node .input {
+    left: -7px !important; 
+}
+
+.drawflow-node .output {
+    right: -7px !important;
+}
+
+/* Hover state that maintains the vertical center */
+.drawflow-node .input:hover, 
+.drawflow-node .output:hover {
+    background: #2563eb !important;
+    transform: translateY(-50%) scale(1.2) !important;
+}
+    
+
+/* Maintain scaling on hover without breaking alignment */
+.drawflow-node .input:hover, 
+.drawflow-node .output:hover {
+    background: #2563eb !important;
+    transform: translateY(-50%) scale(1.2) !important;
+}
+    .node-header { background: #334155; color: white; padding: 8px 12px; border-radius: 7px 7px 0 0; font-size: 0.75rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+    .node-body { padding: 12px; font-size: 0.7rem; color: #64748b; max-height: 50px; overflow: auto !important; border-bottom: 1px solid #f1f5f9; pointer-events: none; }
+    .node-result-tray { padding: 8px 12px; background: #f8fafc; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #059669; max-height: 80px; overflow-y: auto; border-radius: 0 0 8px 8px; }
+
+    #nodeEditorOverlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: white; z-index: 20000; display: none; flex-direction: column; }
+    .editor-header { height: 75px; flex-shrink: 0; padding: 0 40px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e2e8f0; background: white; }
+    .editor-body { flex: 1; display: flex; overflow: hidden; } 
+    .editor-main { flex: 1; padding: 40px; overflow-y: auto; display: flex; flex-direction: column; border-right: 1px solid #e2e8f0; }
+    .editor-sidebar { width: 500px; padding: 40px; background: #f8fafc; overflow-y: auto; flex-shrink: 0; }
+    .prompt-textarea { flex: 1; width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; padding: 25px; outline: none; font-size: 1rem; resize: none; font-family: 'JetBrains Mono', monospace; line-height: 1.6; }
+    
+    #simLogSidebar { position: fixed; right: 0; top: 0; width: 50vw; height: 100vh; background: var(--trace-bg); border-left: 1px solid #334155; padding: 40px; display: none; color: var(--trace-text); overflow-y: auto; z-index: 9999; font-family: 'JetBrains Mono', monospace; }
+    .log-entry { margin-bottom: 30px; padding: 20px; background: var(--trace-card); border-radius: 12px; border-left: 5px solid var(--primary); }
+    .log-title { color: var(--trace-accent); font-weight: 700; margin-bottom: 10px; font-size: 14px; text-transform: uppercase; }
+    .log-code { 
+    font-size: 11px; 
+    color: #e2e8f0; 
+    background: #0f172a; 
+    padding: 12px; 
+    border-radius: 6px; 
+    display: block; 
+    margin-top: 5px; 
+    white-space: pre-wrap; 
+    border: 1px solid #334155;
+    /* ADD THESE TWO LINES */
+    max-height: 200px;     /* Limits the block height */
+    overflow-y: auto;      /* Adds scrollbar for long JSON */
+}
+    .ai-loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8); z-index: 25000; display: none; align-items: center; justify-content: center; flex-direction: column; }
+    .drawflow-node.running { border: 2px solid var(--primary) !important; }
+    .drawflow-node.completed { border: 2px solid #10b981 !important; }
+    .drawflow_delete_node { display: none !important; }
+
+    .zoom-panel {
+    position: absolute;
+    bottom: 30px;
+    right: 30px;
+    z-index: 500; /* Stays above the drawflow canvas but below modals */
+    background: white;
+    padding: 8px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.zoom-level {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    min-width: 45px;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.zoom-panel button {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+}
+
+  /* Custom Connection Lines */
+.drawflow .connection .main-path {
+    stroke: #94a3b8; /* Soft grey from Figma */
+    stroke-width: 1.5px !important; /* Thinner lines */
+    stroke-dasharray: 5; /* Creates the dash pattern */
+    animation: dash-animation 3s linear infinite;
+}
+
+
+/* Animation 1: Moving Dashes (Flow effect) */
+@keyframes dash-animation {
+    from { stroke-dashoffset: 100; }
+    to { stroke-dashoffset: 0; }
+}
+
+/* Animation 2: Blinking (Clignoting) effect */
+@keyframes clignote {
+    0% { opacity: 0.3; }
+    50% { opacity: 1; }
+    100% { opacity: 0.3; }
+}
+
+
+/* Styling for the API specific elements */
+.node-header.api-variant {
+    background: #0f172a !important; /* Darker navy for API calls */
+    color: #f8fafc;
+}
+
+.badge-method {
+    background: #dcfce7;
+    color: #166534;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 800;
+    margin-right: 5px;
+}
+
+.api-url {
+    font-size: 11px;
+    color: #475569;
+    background: #f1f5f9;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+.api-headers-preview {
+    margin-top: 8px;
+    font-size: 11px;
+    color: #64748b;
+    font-style: italic;
+}
+
+.prompt-text {
+    font-size: 12px;
+    line-height: 1.4;
+    color: #334155;
+}
+
+.drawflow .drawflow-node.logic-node {
+    background: #ffffff;
+    border: 2px solid #6366f1; /* Indigo border */
+    min-width: 320px;
+}
+
+.drawflow .drawflow-node.logic-node .header {
+    background: #6366f1; /* Indigo header */
+    color: white;
+    padding: 10px;
+    font-weight: bold;
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    align-items: center;
+}
+
+.drawflow .drawflow-node.logic-node .header i {
+    margin-right: 8px;
+}
+
+
+/* Logic Variant for Script Expressions */
+.node-header.logic-variant {
+    background: #4f46e5 !important; /* Indigo color */
+    color: white;
+}
+
+/* Script Code Block Styling */
+.script-code-block {
+    background: #1e293b; /* Dark slate */
+    color: #f1f5f9;
+    padding: 10px;
+    border-radius: 6px;
+    font-family: 'Fira Code', 'Courier New', monospace;
+    font-size: 11px;
+    max-height: 180px;
+   
+    overflow-y: auto;
+    overflow-x: auto;
+
+    white-space: pre-wrap;
+    margin: 0;
+    border: 1px solid #334155;
+    line-height: 1.4;
+}
+
+/* Method Badge for API (if you don't have it) */
+.badge-method {
+    background: #ecfdf5;
+    color: #059669;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 10px;
+    margin-right: 5px;
+}
+
+/* Custom scrollbar for the code block to keep it looking clean */
+.script-code-block::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+.script-code-block::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 4px;
+}
+
+
   </style>
 </head>
 <body>
 
 <div id="app">
   <div class="top-bar justify-content-between">
-    <div class="d-flex align-items-center gap-3">
-      <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-cpu-fill me-2"></i>Flow Studio</h6>
-      <div class="btn-group">
-        <button id="addBtn" class="btn btn-primary btn-sm rounded-start-pill px-3 shadow-sm">Add Node</button>
-        <button id="magicAddBtn" class="btn btn-magic-add btn-sm rounded-end-pill px-3 shadow-sm"><i class="bi bi-stars"></i></button>
-      </div>
-      
-      <div class="btn-group shadow-sm ms-2" style="background: white; border-radius: 8px;">
-        <button id="zoomOut" class="btn btn-light btn-sm border-0"><i class="bi bi-dash-lg"></i></button>
-        <button id="zoomReset" class="btn btn-light btn-sm border-start border-end fw-bold" style="min-width: 65px;">100%</button>
-        <button id="zoomIn" class="btn btn-light btn-sm border-0"><i class="bi bi-plus-lg"></i></button>
-      </div>
-      <button id="centerBtn" class="btn btn-outline-secondary btn-sm rounded-pill px-3 shadow-sm"><i class="bi bi-fullscreen-exit"></i></button>
+    <div class="d-flex align-items-center gap-2">
+      <h6 class="mb-0 fw-bold me-2"><i class="bi bi-cpu text-primary"></i> Studio</h6>
+      <button id="addBtn" class="btn btn-primary btn-sm rounded-pill px-3">New Node</button>
+      <button id="magicAddBtn" class="btn btn-dark btn-sm rounded-pill px-3"><i class="bi bi-stars"></i> Magic Build</button>
+      <button id="simulateFlowBtn" class="btn btn-danger btn-sm rounded-pill px-4 fw-bold shadow-sm">RUN PIPELINE</button>
+      <button id="openTraceBtn" class="btn btn-outline-info btn-sm rounded-pill px-3">View Trace</button>
     </div>
     <div class="d-flex gap-2">
-      <button id="auditBtn" class="btn btn-outline-info btn-sm border shadow-sm"><i class="bi bi-clipboard-check-fill"></i></button>
-      <button id="configBtn" class="btn btn-outline-warning btn-sm border shadow-sm"><i class="bi bi-key-fill"></i></button>
-      <button id="importBtn" class="btn btn-light btn-sm border shadow-sm">Import</button>
-      <button id="exportBtn" class="btn btn-dark btn-sm rounded-pill px-4 shadow-sm">Export</button>
+      <button id="exportBtn" class="btn btn-outline-dark btn-sm rounded-pill">Export</button>
+      <button id="importBtn" class="btn btn-outline-dark btn-sm rounded-pill">Import</button>
+      <button id="configBtn" class="btn btn-outline-secondary btn-sm rounded-pill"><i class="bi bi-gear"></i></button>
+      <button id="clearFlowBtn" class="btn btn-outline-danger btn-sm rounded-pill">Reset</button>
     </div>
   </div>
+
+  <input type="file" id="importInput" style="display:none" accept=".json">
   <div id="drawflow"></div>
+  <div class="zoom-panel shadow-sm">
+    <button class="btn btn-sm btn-light" id="zoomInBtn" title="Zoom In">
+        <i class="bi bi-plus-lg"></i>
+    </button>
+    <div class="zoom-level" id="zoomLevelDisplay">100%</div>
+    <button class="btn btn-sm btn-light" id="zoomOutBtn" title="Zoom Out">
+        <i class="bi bi-dash-lg"></i>
+    </button>
+    <button class="btn btn-sm btn-outline-secondary ms-2" id="zoomResetBtn">
+        R
+    </button>
+</div>
+  <div id="simLogSidebar">
+      <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
+          <h5 class="mb-0 fw-bold text-info">DEEP TRACE LOG</h5>
+          <button id="closeSimBtn" class="btn btn-sm btn-outline-light rounded-pill px-3">CLOSE</button>
+      </div>
+      <div id="logContent"></div>
+  </div>
 </div>
 
-<div class="modal fade" id="magicAddModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow-lg"><div class="modal-header border-0 bg-light"><h5 class="modal-title fw-bold"><i class="bi bi-stars text-magic me-2"></i>AI Node Creator</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-4"><textarea id="magicAddInput" class="form-control" rows="4" placeholder="Describe the agent's purpose..."></textarea></div><div class="modal-footer border-0"><button id="magicAddCreateBtn" class="btn btn-primary w-100 fw-bold">GENERATE AGENT</button></div></div></div></div>
-
-<div class="modal fade" id="auditModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-xl"><div class="modal-content border-0 shadow-lg"><div class="modal-header bg-dark text-white border-0"><h5 class="modal-title fw-bold">Orchestration Audit</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-4"><div id="auditContent" class="audit-log">Running...</div></div></div></div></div>
-
 <div id="nodeEditorOverlay">
+  <div id="editorAiLoader" class="ai-loading-overlay"><div class="spinner-border text-primary mb-2"></div><div class="fw-bold">AI Processing...</div></div>
   <div class="editor-header">
     <div class="d-flex align-items-center gap-3">
-      <h5 class="mb-0 fw-bold" id="formTitle">Edit Agent</h5>
-      <div class="input-group input-group-sm" style="width: 250px;"><span class="input-group-text bg-light border-0">@</span><input type="text" class="form-control bg-light border-0 fw-bold" id="nodeIdInput"></div>
+        <span class="badge bg-secondary px-3 py-2">ID</span>
+        <input type="text" id="nodeIdInput" class="form-control fw-bold border-0 bg-light px-3" style="width: 350px; font-size: 1.1rem;">
     </div>
-    <div class="d-flex gap-2">
-      <button class="btn btn-outline-secondary btn-sm px-3" id="innerCopyBtn">Duplicate</button>
-      <button class="btn btn-outline-danger btn-sm px-3" id="deleteBtn">Delete</button>
-      <button class="btn btn-light btn-sm border px-3" id="cancelBtn">Cancel</button>
-      <button class="btn btn-primary btn-sm px-4 fw-bold" id="saveBtn">Save Changes</button>
+    <div>
+        <button class="btn btn-danger me-4 px-4 rounded-pill shadow-sm" id="deleteNodeBtn">Delete Node</button>
+        <button class="btn btn-outline-secondary me-2 px-4 rounded-pill" id="cancelBtn">Discard</button>
+        <button id="saveBtn" class="btn btn-primary px-5 fw-bold rounded-pill shadow">Save Changes</button>
     </div>
   </div>
   <div class="editor-body">
     <div class="editor-main">
-      <label class="form-label fw-bold text-uppercase small text-muted mb-3">Instructions</label>
-      <textarea class="prompt-textarea" id="promptInput"></textarea>
+        <div class="sidebar-label-row d-flex justify-content-between mb-2 align-items-center">
+            <label class="small fw-bold text-secondary uppercase">Input</label>
+            <button id="magicPromptBtn" class="btn btn-sm btn-outline-primary rounded-pill px-3"><i class="bi bi-magic"></i> AI Refine</button>
+        </div>
+        <textarea class="prompt-textarea" id="promptInput"></textarea>
     </div>
     <div class="editor-sidebar">
-      <div class="mb-4">
-        <label class="form-label fw-bold text-uppercase small text-muted mb-2">Transformer (JSONata)</label>
-        <div id="transformerAce"></div>
+      <div class="sidebar-section mb-4">
+          <div class="d-flex justify-content-between mb-2">
+              <label class="small fw-bold text-secondary uppercase">Mapping (JSONata)</label>
+              <button id="magicMapBtn" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0" style="font-size: 10px;">AI Sync Parents</button>
+          </div>
+          <div id="transformerAce" style="height: 250px; border: 1px solid #e2e8f0; border-radius: 6px;"></div>
       </div>
-      <div class="mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <label class="form-label fw-bold text-uppercase small text-muted mb-0">JSON Schema</label>
-          <button class="btn btn-outline-primary btn-sm rounded-pill" style="font-size: 10px; font-weight: 800;" id="magicSchemaBtn"><i class="bi bi-stars me-1"></i>AUTO-GENERATE</button>
-        </div>
-        <div id="schemaEditor" style="height: 250px;"></div>
-      </div>
-      <div class="p-3 bg-white border rounded shadow-sm">
-        <input class="form-control form-control-sm mb-2" id="modelIdInput" placeholder="Model ID">
-        <input class="form-control form-control-sm mb-2" id="projectInput" placeholder="Project">
-        <input class="form-control form-control-sm" id="locationInput" placeholder="Location">
+      <div class="sidebar-section">
+          <div class="d-flex justify-content-between mb-2">
+              <label class="small fw-bold text-secondary uppercase">Output Schema</label>
+              <button id="magicSchemaBtn" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0" style="font-size: 10px;">AI Suggest</button>
+          </div>
+          <div id="schemaEditor" style="height: 350px; border: 1px solid #e2e8f0; border-radius: 6px;"></div>
       </div>
     </div>
   </div>
+
+
+
 </div>
 
+<div class="modal fade" id="simModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 shadow-lg"><div class="modal-body p-5">
+    <h4 class="fw-bold mb-4">Pipeline Root Context</h4>
+    <div id="simContextEditor" style="height: 350px; border: 1px solid #e2e8f0; border-radius: 8px;"></div>
+    <div class="mt-4 text-center">
+        <button id="startSimulationBtn" class="btn btn-danger btn-lg px-5 fw-bold rounded-pill shadow">EXECUTE PIPELINE</button>
+    </div>
+</div></div></div></div>
+
+<div class="modal fade" id="configModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow"><div class="modal-body p-4 bg-white rounded">
+    <h6 class="fw-bold mb-3 d-flex align-items-center"><i class="bi bi-shield-lock text-primary me-2"></i>Vertex AI Setup</h6>
+    <input type="text" id="projectId" class="form-control mb-2" placeholder="Project ID" value="qover-ai-agent-test">
+    <input type="text" id="locationId" class="form-control mb-2" placeholder="Location" value="europe-west1">
+    <input type="password" id="tokenInput" class="form-control mb-3" placeholder="GCloud Token">
+    <button id="saveConfigBtn" class="btn btn-primary btn-sm w-100 rounded-pill">Save Settings</button>
+</div></div></div></div>
+
+
+<div class="modal fade" id="magicAddModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-body p-4 text-center">
+          <h5 class="fw-bold mb-3">AI Agent Creator</h5>
+          <p class="text-muted small mb-3">Describe the agent's goal and I will generate the prompt and schema.</p>
+          <textarea id="magicAddInput" class="form-control mb-3" rows="3" placeholder="e.g. 'Assess if a claim is a product defect'"></textarea>
+          <div class="d-flex gap-2">
+              <button class="btn btn-outline-secondary w-100 rounded-pill" data-bs-dismiss="modal">Cancel</button>
+              <button id="magicAddConfirmBtn" class="btn btn-primary w-100 fw-bold rounded-pill">Build Agent</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+
 <script>
-const $=id=>document.getElementById(id);
-const schemaEditor = new JSONEditor($("schemaEditor"), { mode: "code", mainMenuBar: false });
-const transformerAce = ace.edit("transformerAce");
-transformerAce.setTheme("ace/theme/chrome");
-transformerAce.session.setMode("ace/mode/javascript");
-const editor = new Drawflow($("drawflow")); editor.start(); editor.reroute = true;
+let editor, schemaEditor, transformerAce, simContextEditor, editing = null;
+const $ = id => document.getElementById(id);
 
-const updateZoomLabel = () => { $("zoomReset").innerText = Math.round(editor.zoom * 100) + "%"; };
-$("zoomIn").onclick = () => { editor.zoom_in(); updateZoomLabel(); };
-$("zoomOut").onclick = () => { editor.zoom_out(); updateZoomLabel(); };
-$("zoomReset").onclick = () => { editor.zoom_reset(); updateZoomLabel(); };
-$("drawflow").addEventListener('wheel', e => { updateZoomLabel(); }, {passive: true});
+// RESTORED SIMULATION LOGIC
+async function runFullSimulation(rootInput) {
+    const nodes = editor.export().drawflow.Home.data;
+    let globalContext = JSON.parse(JSON.stringify(rootInput)); 
+    const executed = new Set();
+    
+    // Reset UI
+    document.querySelectorAll('.node-result-tray').forEach(el => el.innerHTML = "");
+    
+    // Initial Log Entry
+    $("logContent").innerHTML = `
+        <div class="log-entry" style="border-left-color: #f59e0b">
+            <div class="log-title">PIPELINE START (ROOT CONTEXT)</div>
+            <code class="log-code">${JSON.stringify(globalContext, null, 2)}</code>
+        </div>`;
 
-const htmlOf = (d) => `<div class="node-header"><span><i class="bi bi-robot"></i> ${d.nodeId}</span><div class="node-actions"><i class="bi bi-copy btn-icon-sm duplicate-icon me-1"></i><i class="bi bi-gear-fill btn-icon-sm edit-icon"></i></div></div><div class="node-body">${d.prompt?.substring(0, 30)}...</div>`;
+    while (executed.size < Object.keys(nodes).length) {
+        const readyNodes = Object.keys(nodes).filter(id => 
+            !executed.has(id) && 
+            nodes[id].inputs.input_1.connections.every(c => executed.has(c.node.toString()))
+        );
+        
+        if (!readyNodes.length) break;
+        
+        // Capture Snapshot for this parallel execution level
+        const snapshot = JSON.parse(JSON.stringify(globalContext));
+        const levelResults = [];
 
-const centerFlow = () => {
-    const nodes = Object.values(editor.drawflow.drawflow.Home.data);
-    if (!nodes.length) return;
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    nodes.forEach(n => { minX = Math.min(minX, n.pos_x); maxX = Math.max(maxX, n.pos_x + 220); minY = Math.min(minY, n.pos_y); maxY = Math.max(maxY, n.pos_y + 100); });
-    editor.canvas_x = (editor.container.offsetWidth / 2) - ((minX + maxX) / 2);
-    editor.canvas_y = (editor.container.offsetHeight / 2) - ((minY + maxY) / 2);
-    editor.precanvas.style.transform = `translate(${editor.canvas_x}px, ${editor.canvas_y}px) scale(${editor.zoom})`;
-    updateZoomLabel();
-};
-$("centerBtn").onclick = centerFlow;
+        for (const id of readyNodes) {
+            const nodeEl = document.getElementById('node-'+id);
+            nodeEl.classList.add('running');
+            const d = nodes[id].data;
+            
+            try {
+                // 1. JSONata Mapping
+                const payload = await jsonata(d.transformer || "($)").evaluate(snapshot);
+                
+                // 2. Prompt Rendering
+                const renderedPrompt = d.prompt.replace(/\{\{(.*?)\}\}/g, (m, e) => {
+                    try { return new Function(...Object.keys(payload), `return ${e}`)(...Object.values(payload)); } catch { return m; }
+                });
 
-const loadFlow = (raw) => {
-    try {
-        const flow = raw?.inline?.flow || raw;
-        editor.import({ "drawflow": { "Home": { "data": {} } } });
-        const map = {}; const levels = {};
-        const getLevel = (id) => levels[id] !== undefined ? levels[id] : levels[id] = flow.links.filter(l => l.toNodeId === id).length === 0 ? 0 : Math.max(...flow.links.filter(l => l.toNodeId === id).map(l => getLevel(l.fromNodeId))) + 1;
-        const levelCount = {};
-        flow.nodes.forEach(n => {
-            const level = getLevel(n.id); levelCount[level] = (levelCount[level] || 0) + 1;
-            const ap = n.resolver?.inline?.aiPrompt || {};
-            const mc = ap.modelConfiguration || {};
-            const d = { nodeId: n.id, prompt: ap.promptTemplate || "", schema: ap.responseFormat?.json?.schema || {type:"object"}, transformer: n.resolver?.inputTransformer?.code || "($)", modelId: mc.modelId || "gemini-2.0-flash-001", project: "qover-ai", location: "europe-west1" };
-            map[n.id] = editor.addNode("agent", 1, 1, level * 350, (levelCount[level]-1) * 150, "agent", d, htmlOf(d));
-        });
-        flow.links.forEach(l => { if(map[l.fromNodeId] && map[l.toNodeId]) editor.addConnection(map[l.fromNodeId], map[l.toNodeId], "output_1", "input_1"); });
-        setTimeout(centerFlow, 100);
-    } catch(e) { console.error(e); }
-};
+                // 3. AI Execution
+                const aiRes = await callAI(renderedPrompt, d.schema);
+                const parsed = JSON.parse(aiRes);
+                
+                // 4. Update Node UI
+                nodeEl.querySelector('.node-result-tray').innerText = JSON.stringify(parsed, null, 2);
+                nodeEl.classList.replace('running', 'completed');
+                
+                // 5. DEEP LOGGING INJECTION
+                $("logContent").innerHTML += `
+                    <div class="log-entry">
+                        <div class="log-title">AGENT @${d.nodeId} COMPLETED</div>
+                        
+                        <span class="log-label" style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">1. Input Snapshot Seen</span>
+                        <code class="log-code" style="color: #e2e8f0; border-color: #334155;">${JSON.stringify(snapshot, null, 2)}</code>
 
-/* EDITOR & AI ACTIONS */
-let editing = null;
-function openEditor(edit=false, id=null){
-  editing = edit ? id : null; $("nodeEditorOverlay").style.display = "flex";
-  if(edit){
-    const d = editor.getNodeFromId(id).data;
-    $("formTitle").innerText = "Edit Agent"; $("nodeIdInput").value = d.nodeId; $("nodeIdInput").readOnly = true;
-    $("promptInput").value = d.prompt; schemaEditor.set(d.schema); transformerAce.setValue(d.transformer, -1);
-    $("modelIdInput").value = d.modelId;
-  } else {
-    $("formTitle").innerText = "New Agent"; $("nodeIdInput").value = ""; $("nodeIdInput").readOnly = false;
-    $("promptInput").value = ""; schemaEditor.set({type:"object"}); transformerAce.setValue("($)", -1);
-  }
+                        <span class="log-label" style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">2. JSONata Mapping Output</span>
+                        <code class="log-code" style="color: #38bdf8; border-color: #0c4a6e;">${JSON.stringify(payload, null, 2)}</code>
+
+                        <span class="log-label" style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">3. Final Rendered Prompt</span>
+                        <div class="log-code" style="color: #c084fc; border-color: #4c1d95; background: #1e1b4b;">${renderedPrompt}</div>
+
+                        <span class="log-label" style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">4. Model Result</span>
+                        <code class="log-code" style="color: #10b981; border-color: #064e3b;">${aiRes}</code>
+                    </div>`;
+
+                levelResults.push(parsed);
+            } catch (e) { 
+                nodeEl.classList.remove('running');
+                $("logContent").innerHTML += `
+                    <div class="log-entry" style="border-left-color: #ef4444">
+                        <div class="log-title text-danger">AGENT @${d.nodeId} FAILED</div>
+                        <code class="log-code text-danger">${e.message}</code>
+                    </div>`;
+            }
+            executed.add(id);
+        }
+        // Commit results to global context for next level
+        levelResults.forEach(r => Object.assign(globalContext, r));
+    }
 }
-$("saveBtn").onclick = () => {
-    const d = { nodeId: $("nodeIdInput").value || 'node_'+Math.random().toString(16).slice(2,8), prompt: $("promptInput").value, schema: schemaEditor.get(), transformer: transformerAce.getValue(), modelId: $("modelIdInput").value };
-    if(!editing) editor.addNode("agent", 1, 1, 100, 100, "agent", d, htmlOf(d));
-    else { editor.getNodeFromId(editing).data = d; document.getElementById("node-"+editing).querySelector(".drawflow_content_node").innerHTML = htmlOf(d); }
-    $("nodeEditorOverlay").style.display = "none";
-};
-$("cancelBtn").onclick = () => $("nodeEditorOverlay").style.display = "none";
-$("deleteBtn").onclick = () => { if(editing){ editor.removeNodeId("node-"+editing); $("nodeEditorOverlay").style.display = "none"; } };
-$("addBtn").onclick = () => openEditor(false);
 
-const magicAddModal = new bootstrap.Modal($("magicAddModal"));
-$("magicAddBtn").onclick = () => magicAddModal.show();
-$("magicAddCreateBtn").onclick = async () => {
-    const key = localStorage.getItem("studio_gemini_key"); if(!key) return alert("API Key Required");
-    const task = $("magicAddInput").value;
-    try {
-        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`, {
-            method: 'POST',
-            body: JSON.stringify({ contents: [{ parts: [{ text: `Create AI agent config for: ${task}. Return JSON: {id, instructions, transformer, schema}` }] }] })
-        });
-        const d = await resp.json();
-        const agent = JSON.parse(d.candidates[0].content.parts[0].text.replace(/```json|```/g, ""));
-        const nodeData = { nodeId: agent.id, prompt: agent.instructions, schema: agent.schema, transformer: agent.transformer, modelId: "gemini-2.0-flash-001" };
-        editor.addNode("agent", 1, 1, 200, 200, "agent", nodeData, htmlOf(nodeData));
-        magicAddModal.hide();
-    } catch(e) { alert("AI Creation Failed"); }
+const callAI = async (prompt, schema) => {
+    const token = localStorage.getItem("v_token");
+    const r = await fetch(`https://${localStorage.getItem("v_loc")}-aiplatform.googleapis.com/v1/projects/${localStorage.getItem("v_proj")}/locations/${localStorage.getItem("v_loc")}/publishers/google/models/gemini-2.5-flash:generateContent`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+            "generationConfig": { "temperature": 0.1, "responseMimeType": "application/json", "responseSchema": schema },
+            "contents": [{ "role": "user", "parts": [{"text": prompt}] }]
+        })
+    });
+    const d = await r.json(); return d.candidates[0].content.parts[0].text;
 };
 
-$("drawflow").addEventListener("click",e=>{
-  const ic=e.target.closest(".edit-icon"), nid=e.target.closest(".drawflow-node")?.id.replace("node-","");
-  if(ic && nid) openEditor(true, nid);
+document.addEventListener("DOMContentLoaded", () => {
+    editor = new Drawflow($("drawflow")); editor.start();
+    schemaEditor = new JSONEditor($("schemaEditor"), { mode: "code", mainMenuBar: false });
+    simContextEditor = new JSONEditor($("simContextEditor"), { mode: "code", mainMenuBar: false });
+    transformerAce = ace.edit("transformerAce"); transformerAce.setTheme("ace/theme/chrome");
+
+    $("importBtn").onclick = () => $("importInput").click();
+    $("importInput").onchange = (e) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => { try { importFromOriginalSchema(JSON.parse(ev.target.result)); } catch (err) { console.log(err); alert("Invalid JSON"); } };
+        reader.readAsText(e.target.files[0]);
+        e.target.value = '';
+    };
+
+    $("simulateFlowBtn").onclick = () => { if(!simContextEditor.get()) simContextEditor.set({claim_id: "demo-123"}); new bootstrap.Modal($('simModal')).show(); };
+    $("startSimulationBtn").onclick = () => { runFullSimulation(simContextEditor.get()); bootstrap.Modal.getInstance($('simModal')).hide(); };
+    $("addBtn").onclick = () => { const d={nodeId:"node_"+Math.random().toString(16).slice(2,6)}; editor.addNode("agent", 1, 1, 150, 150, "agent", d, htmlOf(d)); };
+    $("cancelBtn").onclick = () => $("nodeEditorOverlay").style.display = "none";
+    $("deleteNodeBtn").onclick = () => { if(confirm("Delete node?")) { editor.removeNodeId('node-'+editing); $("nodeEditorOverlay").style.display = "none"; } };
+    $("openTraceBtn").onclick = () => {
+    const s = $("simLogSidebar");
+    const currentDisplay = window.getComputedStyle(s).display; // Gets actual CSS value
+    s.style.display = (currentDisplay === 'none') ? 'block' : 'none';
+};
+    $("closeSimBtn").onclick = () => $("simLogSidebar").style.display = 'none';
+    $("configBtn").onclick = () => new bootstrap.Modal($('configModal')).show();
+    $("saveConfigBtn").onclick = () => {
+        localStorage.setItem("v_proj", $("projectId").value); localStorage.setItem("v_loc", $("locationId").value); localStorage.setItem("v_token", $("tokenInput").value);
+        bootstrap.Modal.getInstance($('configModal')).hide();
+    };
+    $("saveBtn").onclick = () => {
+        const d = { nodeId: $("nodeIdInput").value, prompt: $("promptInput").value, schema: schemaEditor.get(), transformer: transformerAce.getValue() };
+        editor.updateNodeDataFromId(editing, d);
+        document.getElementById("node-"+editing).querySelector(".drawflow_content_node").innerHTML = htmlOf(d);
+        $("nodeEditorOverlay").style.display = "none";
+    };
 });
 
-/* THE COMPLETE WEATHER INITIAL FLOW */
-const weatherFinal = {
-  "inline": {
-    "flow": {
-      "nodes": [
-        { "id": "node_france", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Get France weather" } } } },
-        { "id": "node_spain", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Get Spain weather" } } } },
-        { "id": "node_belgium", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Get Belgium weather" } } } },
-        { "id": "node_luxembourg", "resolver": { "inline": { "aiPrompt": { "promptTemplate": "Get Luxembourg weather" } } } },
-        { "id": "node_summary", "resolver": { "inputTransformer": { "code": "({ \"weather\": { \"FR\": weatherFrance, \"ES\": weatherSpain, \"BE\": weatherBelgium, \"LU\": weatherLuxembourg } })" }, "inline": { "aiPrompt": { "promptTemplate": "Summarize weather result." } } } }
-      ],
-      "links": [
-        { "fromNodeId": "node_france", "toNodeId": "node_summary" }, { "fromNodeId": "node_spain", "toNodeId": "node_summary" }, { "fromNodeId": "node_belgium", "toNodeId": "node_summary" }, { "fromNodeId": "node_luxembourg", "toNodeId": "node_summary" }
-      ]
+function triggerEditFromNode(el) {
+    const nodeId = el.closest('.drawflow-node').id.replace('node-', '');
+    editing = nodeId;
+    const d = editor.getNodeFromId(nodeId).data;
+    console.log(d);
+    $("nodeEditorOverlay").style.display = "flex";
+    $("nodeIdInput").value = d.nodeId;
+    $("promptInput").value = d.prompt || JSON.stringify(d.apiCall) || d.transformer || "";
+    schemaEditor.set(d.schema || {});
+    transformerAce.setValue(d.transformer || "($)", -1);
+}
+
+
+
+const htmlOf = (d) => {
+    // 1. Detect Node Type
+    const isApi = !!d.apiCall;
+    const isScript = !!d.isScriptOnly;
+    
+
+    console.log( "------ " + d.nodeId + " ------ ");
+    console.log(d);
+    // 2. Resolve Configuration
+    const apiConfig = isApi ? d.apiCall.http : null;
+    const title = d.nodeId || 'Agent';
+    
+    // 3. UI Classes & Icons
+    let headerClass = 'node-header';
+    let icon = 'bi-robot';
+    
+    if (isApi) {
+        headerClass += ' api-variant';
+        icon = 'bi-cloud-arrow-up';
+    } else if (isScript) {
+        headerClass += ' logic-variant'; // Add this to your CSS (e.g., indigo background)
+        icon = 'bi-code-slash';
     }
-  }
+
+    return `
+        <div class="${headerClass}">
+            <span><i class="bi ${icon} me-1"></i> @${title}</span>
+            <i class="bi bi-pencil-square" onclick="triggerEditFromNode(this)" style="cursor:pointer"></i>
+        </div>
+        <div class="node-body">
+            ${isApi ? `
+                <div class="api-info">
+                    <span class="badge-method">${apiConfig.method.replace('HTTP_METHOD_', '')}</span>
+                    <code class="api-url">${apiConfig.url.split('/').pop()}</code>
+                </div>
+                <div class="api-headers-preview">
+                    <i class="bi bi-link-45deg"></i> Endpoint: ${apiConfig.url.substring(0, 30)}...
+                </div>
+            ` : isScript ? `
+                <div class="script-preview">
+                    <div style="font-size: 9px; color: #6366f1; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">
+                        JSONata Expression
+                    </div>
+                    <pre class="script-code-block">${d.transformer}</pre>
+                </div>
+            ` : `
+                <div class="prompt-text">${d.prompt || '<i>Unconfigured Agent</i>'}</div>
+            `}
+        </div>
+        <div class="node-result-tray"></div>
+    `;
 };
-window.onload = () => loadFlow(weatherFinal);
+
+
+
+function importFromOriginalSchema(json) {
+    if (!json.nodes) return;
+    editor.clear();
+    const idMap = {};
+    const levels = {};
+
+    // Initial level mapping
+    json.nodes.forEach(n => levels[n.id] = 0);
+    (json.links || []).forEach(l => {
+        levels[l.toNodeId] = Math.max(levels[l.toNodeId] || 0, (levels[l.fromNodeId] || 0) + 1);
+    });
+
+    const counts = {};
+    const processedIds = new Set(); // Move this to the very top of the function
+
+    json.nodes.forEach(n => {
+        if (processedIds.has(n.id)) return;
+    processedIds.add(n.id);
+
+    const resolver = n.resolver || {};
+    const inline = resolver.inline || {};
+    
+    const hasApi = !!(inline.apiCall || resolver.apiCall);
+    const hasScript = !!(inline.script || resolver.script);
+    const hasPrompt = !!(inline.aiPrompt);
+
+    let nodeData = { nodeId: n.id };
+    let nodeClass = "agent"; 
+console.log("-- processing---")
+    console.log(n.id)
+    console.log(n);
+    console.log("----")
+
+    if (hasApi) {
+        nodeData.apiCall = inline.apiCall || resolver.apiCall;
+        nodeClass = "api-node";
+    } else if (hasScript) {
+        // SPECIFIC LOGIC FOR SCRIPT EXPRESSIONS
+        const scriptObj = inline.script || resolver.script;
+        nodeData.transformer = scriptObj.code;
+        nodeData.isScriptOnly = true; // Flag for htmlOf
+        nodeData.language = scriptObj.language || "JSONATA";
+        nodeClass = "logic-node"; // New CSS class
+    } else if (hasPrompt) {
+        nodeData.prompt = inline.aiPrompt.promptTemplate;
+        nodeData.schema = inline.aiPrompt.responseFormat?.json?.schema;
+        nodeData.transformer = resolver.inputTransformer?.code || "($)";
+    }
+
+    // Position and Add...
+    const lvl = levels[n.id] || 0;
+    counts[lvl] = (counts[lvl] || 0) + 1;
+    const xPos = 100 + (lvl * 420);
+    const yPos = 100 + (counts[lvl] * 240);
+
+    idMap[n.id] = editor.addNode(
+        nodeClass, 1, 1, xPos, yPos, nodeClass, nodeData, htmlOf(nodeData)
+    );
+});
+
+    // 5. Restore connections
+    (json.links || []).forEach(l => { 
+        if (idMap[l.fromNodeId] && idMap[l.toNodeId]) {
+            editor.addConnection(idMap[l.fromNodeId], idMap[l.toNodeId], "output_1", "input_1"); 
+        }
+    });
+}
+
+
+$("magicPromptBtn").onclick = async () => {
+    $("editorAiLoader").style.display = 'flex';
+    
+    const refineSchema = {
+        type: "object",
+        properties: {
+            improved_prompt: { type: "string" }
+        },
+        required: ["improved_prompt"]
+    };
+
+    const currentPrompt = $("promptInput").value;
+
+    // The Meta-Instruction for the Prompt Engineer AI
+    const metaInstruction = `
+        You are an expert Insurance Prompt Engineer. Your task is to transform a simple goal into a professional, structured system prompt for a Claim Handler AI.
+        
+        The final prompt MUST follow this exact structure:
+        1. ROLE: Clear description ("You are a claim handler...")
+        2. RULES AND SCOPE: Bullet points covering coverage, rejection reasons, and specific edge cases (e.g., Product Defect, Delivery, Cosmetic).
+        3. EXTRACT: A section for {{JSON.stringify(inputPrompt)}}.
+        4. RESPONSE FORMAT: Strict JSON output requirements (aiEnrichmentStatus, aiEnrichmentExplanation, aiEnrichmentConfidence).
+        5. WARNINGS: Critical logic guards (e.g., handle customer statements as declarative, possession rules, grey zones).
+
+        Input Goal to refine: "${currentPrompt}"
+    `;
+
+    try {
+        const r = await callAI(metaInstruction, refineSchema);
+        const parsed = JSON.parse(r);
+        $("promptInput").value = parsed.improved_prompt;
+    } catch (e) {
+        console.error("Refinement failed:", e);
+        alert("AI Refine failed. Please check your connection.");
+    } finally {
+        $("editorAiLoader").style.display = 'none';
+    }
+};
+
+
+
+
+document.addEventListener('DOMContentLoaded', () => {
+
+    const updateZoomDisplay = () => {
+        const percentage = Math.round(editor.zoom * 100);
+        $("zoomLevelDisplay").innerText = percentage + "%";
+    };
+
+    $("zoomInBtn").onclick = () => {
+        editor.zoom_in();
+        updateZoomDisplay();
+    };
+
+    $("zoomOutBtn").onclick = () => {
+        editor.zoom_out();
+        updateZoomDisplay();
+    };
+
+    $("zoomResetBtn").onclick = () => {
+        editor.zoom = 1; // 100%
+        editor.zoom_refresh(); // Required after setting direct value
+        updateZoomDisplay();
+    };
+
+    // Update display when user uses Ctrl + Mouse Wheel
+    editor.on('zoom', () => {
+        updateZoomDisplay();
+    });
+    
+$("magicSchemaBtn").onclick = async () => {
+    $("editorAiLoader").style.display = 'flex';
+    
+    // Strict Meta-Schema to ensure the AI returns a valid JSON Schema object
+    const metaSchema = {
+        type: "object",
+        properties: {
+            type: { type: "string", enum: ["object"] },
+            properties: { type: "object" },
+            required: { type: "array", items: { type: "string" } }
+        },
+        required: ["type", "properties", "required"]
+    };
+
+    const currentPrompt = $("promptInput").value;
+
+    // Explicit instruction to find specific insurance keys
+    const schemaInstruction = `
+        You are a JSON Schema Architect. Analyze the 'RESPONSE FORMAT' section of this prompt.
+        Identify every key (e.g., aiEnrichmentStatus, aiEnrichmentExplanation).
+        Determine if it is a string or number based on the description.
+        If 'aiEnrichmentStatus' is mentioned with 'Accepted/Rejected/More info needed', add an 'enum' for those values.
+        
+        System Prompt to analyze: "${currentPrompt}"
+    `;
+
+    try {
+        const r = await callAI(schemaInstruction, metaSchema);
+        const suggestedSchema = JSON.parse(r);
+        console.log(r);
+        // Validation check to prevent empty outputs
+       /* if (!suggestedSchema.properties || Object.keys(suggestedSchema.properties).length === 0) {
+            throw new Error("The AI couldn't find a RESPONSE FORMAT section. Make sure your prompt lists the keys clearly.");
+        }*/
+
+        schemaEditor.set(suggestedSchema);
+    } catch (e) {
+        console.error("Schema suggestion failed:", e);
+        alert("Schema Suggestion failed: " + e.message);
+    } finally {
+        $("editorAiLoader").style.display = 'none';
+    }
+};
+
+// This button is in your Top Bar
+$("magicAddBtn").onclick = () => {
+    // Correct way to show a Bootstrap 5 modal via JS
+    const modalEl = document.getElementById('magicAddModal');
+    const myModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    myModal.show();
+};
+
+
+// This button is inside the modal footer
+$("magicAddConfirmBtn").onclick = async () => {
+    const goal = $("magicAddInput").value;
+    if (!goal) return alert("Please describe the agent's goal first.");
+
+    // Show your loader
+    if ($("editorAiLoader")) $("editorAiLoader").style.display = 'flex';
+
+    try {
+        const nodeSchema = {
+            type: "object",
+            properties: {
+                nodeId: { type: "string" },
+                prompt: { type: "string" },
+                schema: { type: "object" }
+            },
+            required: ["nodeId", "prompt", "schema"]
+        };
+
+        const result = await callAI(`Build an agent for: "${goal}"`, nodeSchema);
+        const data = JSON.parse(result);
+        
+        // Add to canvas
+        editor.addNode("agent", 1, 1, 150, 150, "agent", { ...data, transformer: "($)" }, htmlOf(data));
+
+        // Hide the modal after success
+        bootstrap.Modal.getInstance(document.getElementById('magicAddModal')).hide();
+        $("magicAddInput").value = ""; // Clear for next time
+    } catch (e) {
+        console.error("Magic Build Error:", e);
+    } finally {
+        if ($("editorAiLoader")) $("editorAiLoader").style.display = 'none';
+    }
+};
+
+});
+
 </script>
 </body>
 </html>
