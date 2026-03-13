@@ -755,57 +755,64 @@ function importFromOriginalSchema(json) {
     
     const idMap = {};
     const levels = {};
-    const childrenOf = {};
+    const parentsOf = {}; // Track who points to whom
 
-    // 1. Build adjacency list for layout calculation
+    // 1. Initialize mapping
     json.nodes.forEach(n => {
         levels[n.id] = 0;
-        childrenOf[n.id] = [];
-    });
-    
-    (json.links || []).forEach(l => {
-        childrenOf[l.fromNodeId].push(l.toNodeId);
+        parentsOf[n.id] = [];
     });
 
-    // 2. Calculate "Depth" levels using a simple iterative pass
+    // 2. Build dependency map and calculate levels (X-axis)
+    (json.links || []).forEach(l => {
+        parentsOf[l.toNodeId].push(l.fromNodeId);
+    });
+
+    // Determine horizontal level (Rank)
     for (let i = 0; i < json.nodes.length; i++) {
         (json.links || []).forEach(l => {
             levels[l.toNodeId] = Math.max(levels[l.toNodeId], levels[l.fromNodeId] + 1);
         });
     }
 
-    // 3. Group nodes by level to center them vertically
-    const nodesByLevel = {};
-    json.nodes.forEach(n => {
+    const counts = {};
+    const nodePositions = {}; // Store {x, y} to reference for children
+
+    // 3. Sort nodes by level so we process parents before children
+    const sortedNodes = [...json.nodes].sort((a, b) => levels[a.id] - levels[b.id]);
+
+    sortedNodes.forEach(n => {
         const lvl = levels[n.id];
-        if (!nodesByLevel[lvl]) nodesByLevel[lvl] = [];
-        nodesByLevel[lvl].push(n);
+        const parents = parentsOf[n.id];
+        
+        let xPos = 100 + (lvl * 380);
+        let yPos;
+
+        if (lvl === 0) {
+            // Root level: Just stack them
+            counts[lvl] = (counts[lvl] || 0) + 1;
+            yPos = 100 + (counts[lvl] * 220);
+        } else {
+            // Child level: Center based on parent average Y
+            const parentYSum = parents.reduce((sum, pId) => sum + nodePositions[pId].y, 0);
+            const avgY = parentYSum / parents.length;
+            
+            // To prevent overlap if multiple children share parents:
+            counts[lvl] = (counts[lvl] || 0) + 1;
+            yPos = avgY + ((counts[lvl] - 1) * 50); // Minimal offset if stacked
+        }
+
+        nodePositions[n.id] = { x: xPos, y: yPos };
+
+        const nodeData = buildNodeData(n);
+        const nodeClass = nodeData.isScriptOnly ? "logic-node" : (nodeData.apiCall ? "api-node" : "agent");
+
+        idMap[n.id] = editor.addNode(
+            nodeClass, 1, 1, xPos, yPos, nodeClass, nodeData, htmlOf(nodeData)
+        );
     });
 
-    // 4. Render Nodes with dynamic vertical centering
-    const canvasHeight = window.innerHeight;
-    const horizontalGap = 340; // Space between columns
-    const verticalGap = 160;   // Space between rows
-
-    Object.keys(nodesByLevel).forEach(lvl => {
-        const levelNodes = nodesByLevel[lvl];
-        const totalHeight = (levelNodes.length - 1) * verticalGap;
-        const startY = (canvasHeight / 2) - (totalHeight / 2); // Center column vertically
-
-        levelNodes.forEach((n, index) => {
-            let nodeData = buildNodeData(n); // Extract data mapping logic
-            let nodeClass = nodeData.isScriptOnly ? "logic-node" : (nodeData.apiCall ? "api-node" : "agent");
-
-            const xPos = 50 + (lvl * horizontalGap);
-            const yPos = startY + (index * verticalGap);
-
-            idMap[n.id] = editor.addNode(
-                nodeClass, 1, 1, xPos, yPos, nodeClass, nodeData, htmlOf(nodeData)
-            );
-        });
-    });
-
-    // 5. Restore connections
+    // 4. Restore connections
     (json.links || []).forEach(l => { 
         if (idMap[l.fromNodeId] && idMap[l.toNodeId]) {
             editor.addConnection(idMap[l.fromNodeId], idMap[l.toNodeId], "output_1", "input_1"); 
