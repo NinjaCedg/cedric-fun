@@ -299,6 +299,10 @@ transition: all 0.2s ease;
 
 
   </style>
+  <script>
+    let editor, schemaEditor, transformerAce, simContextEditor, mainScriptAce, editing = null;
+const $ = id => document.getElementById(id);
+  </script>
 </head>
 <body>
 
@@ -361,7 +365,16 @@ transition: all 0.2s ease;
             <label class="small fw-bold text-secondary uppercase">Input</label>
             <button id="magicPromptBtn" class="btn btn-sm btn-outline-primary rounded-pill px-3"><i class="bi bi-magic"></i> AI Refine</button>
         </div>
+
+
+        <div class="sidebar-label-row d-flex justify-content-between mb-2 align-items-center">
+            <label class="small fw-bold text-secondary uppercase" id="mainEditorLabel">Input</label>
+            <button id="magicPromptBtn" class="btn btn-sm btn-outline-primary rounded-pill px-3"><i class="bi bi-magic"></i> AI Refine</button>
+        </div>
         <textarea class="prompt-textarea" id="promptInput"></textarea>
+        <div id="mainScriptAce" style="display:none; flex: 1; width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></div>
+
+
     </div>
     <div class="editor-sidebar">
       <div class="sidebar-section mb-4">
@@ -421,8 +434,64 @@ transition: all 0.2s ease;
   
 
 <script>
-let editor, schemaEditor, transformerAce, simContextEditor, editing = null;
-const $ = id => document.getElementById(id);
+
+
+
+$("exportBtn").onclick = () => {
+    const rawData = editor.export().drawflow.Home.data;
+    const nodes = [];
+    const links = [];
+
+    // Transform Drawflow format back to your Schema format
+    Object.keys(rawData).forEach(id => {
+        const node = rawData[id];
+        const d = node.data;
+        
+        // Reconstruction logic based on node type
+        let resolver = {};
+        if (d.apiCall) {
+            resolver = { inline: { apiCall: d.apiCall } };
+        } else if (d.isScriptOnly) {
+            resolver = { inline: { script: { code: d.transformer, language: d.language || "JSONATA" } } };
+        } else {
+            resolver = { 
+                inline: { 
+                    aiPrompt: { 
+                        promptTemplate: d.prompt, 
+                        responseFormat: { json: { schema: d.schema } } 
+                    } 
+                },
+                inputTransformer: { code: d.transformer || "($)" }
+            };
+        }
+
+        nodes.push({
+            id: d.nodeId || d.id || `node_${id}`,
+            resolver: resolver,
+            executionMode: d.executionMode || "EXECUTION_MODE_IMMEDIATE"
+        });
+
+        // Capture Links
+        node.outputs.output_1.connections.forEach(conn => {
+            const targetNode = rawData[conn.node].data;
+            links.push({
+                fromNodeId: d.nodeId || d.id,
+                toNodeId: targetNode.nodeId || targetNode.id
+            });
+        });
+    });
+
+    const exportData = { nodes, links };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `agent-flow-export-${new Date().getTime()}.json`;
+    a.click();
+};
+
+
+
 
 // RESTORED SIMULATION LOGIC
 async function runFullSimulation(rootInput) {
@@ -526,6 +595,13 @@ document.addEventListener("DOMContentLoaded", () => {
     simContextEditor = new JSONEditor($("simContextEditor"), { mode: "code", mainMenuBar: false });
     transformerAce = ace.edit("transformerAce"); transformerAce.setTheme("ace/theme/chrome");
 
+
+    mainScriptAce = ace.edit("mainScriptAce");
+    mainScriptAce.setTheme("ace/theme/tomorrow_night_eighties"); // Dark theme for logic
+    mainScriptAce.session.setMode("ace/mode/jsonata");
+
+
+
     $("importBtn").onclick = () => $("importInput").click();
     $("importInput").onchange = (e) => {
         const reader = new FileReader();
@@ -558,20 +634,55 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 });
 
+
+
 function triggerEditFromNode(el) {
     const nodeId = el.closest('.drawflow-node').id.replace('node-', '');
     editing = nodeId;
     const d = editor.getNodeFromId(nodeId).data;
-    console.log(d);
+    const isScript = !!d.isScriptOnly;
+
     $("nodeEditorOverlay").style.display = "flex";
-    $("nodeIdInput").value = d.nodeId;
-    $("promptInput").value = d.prompt || JSON.stringify(d.apiCall) || d.transformer || "";
+    $("nodeIdInput").value = d.nodeId || d.id;
+
+    // Reset common states before branching logic
+    $("promptInput").disabled = false;
+    $("magicPromptBtn").style.display = "inline-block";
+
+    if (isScript) {
+        // 1. Logic Node UI State
+        $("promptInput").style.display = "none";
+        $("mainScriptAce").style.display = "block";
+        $("mainEditorLabel").innerText = "JSONata Logic Expression";
+        $("magicPromptBtn").style.display = "none"; 
+        
+        mainScriptAce.setValue(d.transformer || "", -1);
+
+    } else {
+        // 2. Regular Agent / API UI State
+        // CRITICAL: Re-show the prompt input if it was hidden by a script node
+        $("promptInput").style.display = "block";
+        $("mainScriptAce").style.display = "none";
+        $("mainEditorLabel").innerText = "System Prompt";
+
+        if (d.apiCall) {
+            // API Variant
+            $("promptInput").value = d.apiCall.http.url;
+            $("promptInput").disabled = true; // URL should be read-only in this view
+        } else {
+            // Standard Agent Variant
+            $("promptInput").value = d.prompt || "";
+        }
+    }
+
+    // 3. Handle Sidebar Code (JSONata mapping for AI Agents)
+    // For script nodes, we usually leave this empty or duplicate the code
+    const scriptCode = d.transformer || "($)";
+    transformerAce.setValue(scriptCode, -1); 
+    
+    // 4. Handle Schema
     schemaEditor.set(d.schema || {});
-    transformerAce.setValue(d.transformer || "($)", -1);
 }
-
-
-
 const htmlOf = (d) => {
     // 1. Detect Node Type
     const isApi = !!d.apiCall;
@@ -667,6 +778,7 @@ console.log("-- processing---")
         // SPECIFIC LOGIC FOR SCRIPT EXPRESSIONS
         const scriptObj = inline.script || resolver.script;
         nodeData.transformer = scriptObj.code;
+   
         nodeData.isScriptOnly = true; // Flag for htmlOf
         nodeData.language = scriptObj.language || "JSONATA";
         nodeClass = "logic-node"; // New CSS class
