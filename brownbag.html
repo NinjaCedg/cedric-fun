@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Wars: The FNOL Uprising</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 1. CORE DESIGN PRINCIPLES */
+        * { box-sizing: border-box; }
+        body {
+            background-color: #000814;
+            margin: 0;
+            padding: 20px 0;
+            display: grid;
+            place-items: center;
+            font-family: 'Inter', sans-serif;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        .slide-container {
+            width: 1280px;
+            height: 720px;
+            background-color: #000814;
+            border: 2px solid #1e293b;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            padding: 80px;
+            margin-bottom: 40px;
+        }
+
+        .slide-container::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(180deg, rgba(2, 6, 23, 0.3) 0%, rgba(2, 6, 23, 0.95) 100%);
+            z-index: 1;
+        }
+
+        .bg-glow {
+            position: absolute;
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(255, 232, 31, 0.05) 0%, transparent 70%);
+            top: -300px;
+            right: -300px;
+            z-index: 0;
+        }
+
+        .slide-container > * { position: relative; z-index: 2; }
+
+        /* 2. TYPOGRAPHY */
+        h1, h2, h3 {
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            margin: 0;
+        }
+
+        h1 { font-size: 84px; color: #FFE81F; text-shadow: 0 0 30px rgba(255, 232, 31, 0.5); text-align: center; width: 100%; }
+        
+        .slide-title {
+            font-size: 40px;
+            color: #00A4FF; 
+            margin-bottom: 40px;
+            border-left: 6px solid #E63946; 
+            padding-left: 20px;
+            text-align: left;
+            width: 100%;
+        }
+        
+        p, li { font-size: 24px; line-height: 1.4; color: #cbd5e1; font-weight: 300; }
+        .subtitle { font-size: 26px; color: #94a3b8; margin-top: 15px; text-align: center; width: 100%; }
+
+        .content-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            width: 100%;
+        }
+
+        /* 3. STAR WARS CRAWL ANIMATION */
+        .crawl-slide {
+            background: #000;
+            perspective: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .crawl-content {
+            position: absolute;
+            width: 800px;
+            bottom: -500px;
+            font-family: 'Inter', sans-serif;
+            font-size: 40px;
+            font-weight: 700;
+            text-align: justify;
+            color: #FFE81F;
+            transform: rotateX(25deg) translateZ(0);
+            animation: crawl 45s linear infinite;
+        }
+
+        .crawl-content h2 {
+            text-align: center;
+            font-size: 60px;
+            margin-bottom: 40px;
+        }
+
+        @keyframes crawl {
+            0% { top: 100%; }
+            100% { top: -2500px; }
+        }
+
+        .intro-text {
+            color: #4BD5EE;
+            font-family: 'Inter', sans-serif;
+            font-size: 32px;
+            font-weight: 400;
+            text-align: left;
+            width: 100%;
+            margin-bottom: 200px;
+            animation: fadeOut 4s forwards 2s;
+        }
+
+        @keyframes fadeOut {
+            to { opacity: 0; }
+        }
+
+        /* 4. LAYOUTS */
+        .two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; width: 100%; }
+
+        .tile {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid #1e293b;
+            padding: 40px;
+            border-top: 5px solid #E63946;
+            height: 100%;
+        }
+        .tile h3 { font-size: 20px; color: #38bdf8; margin-bottom: 12px; letter-spacing: 2px; }
+
+        .image-wrapper {
+            border: 1px solid rgba(0, 164, 255, 0.3);
+            height: 400px;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0,0,0,0.6);
+        }
+        .image-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+
+        .tiled-content { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
+        .icon-tile { text-align: left; padding: 30px; background: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-left: 4px solid #E63946; }
+        .icon-tile i { font-size: 40px; color: #00A4FF; margin-bottom: 20px; }
+        .icon-tile h3 { font-size: 20px; color: #fff; margin-bottom: 10px; }
+        .icon-tile p { font-size: 18px; }
+
+        .bleed-image-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0 !important; align-items: start; }
+        .bleed-image-layout .content-container { padding: 80px; align-self: center; }
+        .bleed-image-side { height: 720px; width: 100%; object-fit: cover; border-left: 5px solid #00A4FF; }
+
+        .timeline-layout { display: flex; justify-content: space-between; position: relative; margin-top: 80px; width: 100%; }
+        .timeline-line { position: absolute; top: 25px; width: 100%; height: 2px; background: #334155; z-index: 0; }
+        .timeline-item { width: 22%; text-align: center; position: relative; z-index: 1; }
+        .timeline-dot { width: 50px; height: 50px; background: #E63946; border: 10px solid #000814; border-radius: 50%; margin: 0 auto 25px; box-shadow: 0 0 15px #E63946; }
+
+        .quote-layout blockquote { font-family: 'Orbitron'; font-size: 52px; color: #fff; text-align: center; line-height: 1.2; position: relative; font-style: italic; letter-spacing: 2px; }
+        .quote-layout blockquote::before { content: '“'; font-size: 150px; color: #00A4FF; position: absolute; left: -60px; top: -80px; opacity: 0.3; }
+    </style>
+</head>
+<body>
+
+<!-- Slide 0: Cinematic Intro Crawl -->
+<div class="slide-container crawl-slide" id="slide0">
+    <div class="intro-text">A long time ago in a platform far, far away....</div>
+    
+    <div class="crawl-content">
+        <p style="text-align:center; font-size: 30px; margin-bottom: 20px;">Episode I</p>
+        <h2>THE FNOL UPRISING</h2>
+        <p>It is a period of transition within the Qover galaxy. Rebel engineers, working from a hidden sprint, have secured a major victory against the Galactic Empire of third-party tools.</p>
+        <p>&nbsp;</p>
+        <p>For too long, the Empire’s rigid forms—Paperform, Jotform, and Penbox—have held the claim intake process hostage, demanding manual work and offering no real-time connection to the core systems.</p>
+        <p>&nbsp;</p>
+        <p>Armed with the blueprints for a new NATIVE BUILDER, the resistance prepares to strike. But the danger is far from over. Imperial remnants still occupy 80% of the platform’s products.</p>
+        <p>&nbsp;</p>
+        <p>As the team prepares for the final push, they seek to restore sovereignty, enable SSO, and bring true whitelabeling to every partner in the star system. Only then will the FNOL be truly free....</p>
+    </div>
+</div>
+
+<!-- Slide 1: Mission Briefing -->
+<div class="slide-container" id="slide1" style="background-image: url('http://googleusercontent.com/image_collection/image_retrieval/13609098320244329855'); background-size: cover; background-position: center;">
+    <div class="bg-glow"></div>
+    <div class="title-layout">
+        <h1>A NEW HOPE</h1>
+        <p class="subtitle">The FNOL Uprising: Reclaiming the Platform</p>
+    </div>
+</div>
+
+<!-- Slide 2: The Engagement Hook -->
+<div class="slide-container" id="slide2" style="background-image: url('http://googleusercontent.com/image_collection/image_retrieval/8644726026534229397'); background-size: cover; background-position: center;">
+    <div class="content-area">
+        <div class="quote-layout">
+            <blockquote style="text-shadow: 0 0 30px #000;">"Help us, Internal Builder. You're our only hope."</blockquote>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 3: Intelligence Report - What is FNOL? -->
+<div class="slide-container" id="slide3">
+    <div class="bg-glow"></div>
+    <h2 class="slide-title">INTEL: THE TARGET</h2>
+    <div class="content-area">
+        <div class="two-column">
+            <div style="font-family: 'Orbitron';">
+                <p style="font-size: 54px; color: #FFE81F; margin-bottom: 20px;">FNOL</p>
+                <p style="color: #00A4FF; font-size: 32px; letter-spacing: 2px;">FIRST NOTIFICATION<br>OF LOSS.</p>
+                <p style="margin-top: 40px; font-size: 28px;">THE FRONTIER.<br>THE PRIMARY GATEWAY.</p>
+            </div>
+            <div class="image-wrapper">
+                <img src="http://googleusercontent.com/image_collection/image_retrieval/9229889232739656040" alt="Tactical radar interface display">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 4: The Old Republic (Evolution of Tools) -->
+<div class="slide-container" id="slide4">
+    <h2 class="slide-title">THE OLD REPUBLIC</h2>
+    <div class="content-area">
+        <div class="two-column">
+            <div class="tile">
+                <h3 style="color: #00A4FF;">PAPERFORM</h3>
+                <p>Initial expansion.</p>
+                <h3 style="margin-top: 20px; color: #00A4FF;">JOTFORM</h3>
+                <p>Multi-language protocols.</p>
+                <h3 style="margin-top: 20px; color: #00A4FF;">PENBOX</h3>
+                <p>AI-driven capability.</p>
+            </div>
+            <div class="tile">
+                <h3>TACTICAL RATIONALE</h3>
+                <p>Speed over Sovereignty.<br>Zero build cost.<br>Immediate deployment.</p>
+                <p style="margin-top: 20px; font-style: italic; color: #94a3b8;">"A short-term peace for a long-term debt."</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 5: Imperial Shackles (Tactical Weaknesses) -->
+<div class="slide-container" id="slide5">
+    <h2 class="slide-title">IMPERIAL SHACKLES</h2>
+    <div class="content-area">
+        <div class="tiled-content">
+            <div class="icon-tile">
+                <i class="fa-solid fa-link-slash"></i>
+                <h3>NO REAL-TIME SYNC</h3>
+                <p>Forms are disconnected from our core system. Zero pre-fill abilities.</p>
+            </div>
+            <div class="icon-tile">
+                <i class="fa-solid fa-language"></i>
+                <h3>TRANSLATION NIGHTMARE</h3>
+                <p>Global management is manual, fragile, and unscalable.</p>
+            </div>
+            <div class="icon-tile">
+                <i class="fa-solid fa-mask"></i>
+                <h3>NO REAL WHITELABEL</h3>
+                <p>Hiding behind third-party designs. Diluting the Qover brand.</p>
+            </div>
+            <div class="icon-tile">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <h3>OPERATIONAL RISK</h3>
+                <p>Critical intake dependent on external reliability.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 6: The Counter-Attack -->
+<div class="slide-container bleed-image-layout" id="slide6">
+    <div class="content-container">
+        <h2 class="slide-title" style="color: #00A4FF; border-left-color: #E63946;">THE COUNTER-ATTACK</h2>
+        <div class="content-area">
+            <p style="font-family: 'Orbitron'; font-size: 28px; color: #FFE81F;">INTERNAL FORCE AWAKENS.</p>
+            <p style="margin-top: 20px;">Deploying our own native builder. Taking back control to meet Enterprise-ready requirements.</p>
+            <p style="margin-top: 30px; color: #00A4FF; font-weight: bold;">"STAY ON TARGET."</p>
+        </div>
+    </div>
+    <img class="bleed-image-side" src="http://googleusercontent.com/image_collection/image_retrieval/8200579096403258292" alt="Cinematic cockpit view jumping to hyperspace">
+</div>
+
+<!-- Slide 7: Native Superiority (Jedi Arsenal) -->
+<div class="slide-container" id="slide7">
+    <h2 class="slide-title">THE JEDI ARSENAL</h2>
+    <div class="content-area">
+        <div class="two-column">
+            <div class="image-wrapper">
+                <img src="http://googleusercontent.com/image_collection/image_retrieval/8296268134055180829" alt="High tech digital blueprint interface">
+            </div>
+            <div>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin-bottom: 25px; color: #FFE81F;"><i class="fa-solid fa-bolt" style="margin-right: 15px; color: #00A4FF;"></i> <strong>SECURE SYNC:</strong> Real-time link. Intelligent pre-fill.</li>
+                    <li style="margin-bottom: 25px; color: #FFE81F;"><i class="fa-solid fa-key" style="margin-right: 15px; color: #00A4FF;"></i> <strong>SSO AUTH:</strong> Mandatory Enterprise security.</li>
+                    <li style="margin-bottom: 25px; color: #FFE81F;"><i class="fa-solid fa-palette" style="margin-right: 15px; color: #00A4FF;"></i> <strong>PURE WHITELABEL:</strong> Design sovereignty.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 8: The Empire Strikes Back (Twist) -->
+<div class="slide-container bleed-image-layout" id="slide8">
+    <div class="content-container">
+        <h2 class="slide-title" style="color: #E63946; border-left-color: #E63946;">THE EMPIRE STRIKES BACK</h2>
+        <div class="content-area">
+            <p style="font-size: 28px; color: #fff;">The Uprising has begun...</p>
+            <p style="margin-top: 20px; font-weight: 600; color: #E63946; font-family: 'Orbitron';">THEY ARE STILL HERE.</p>
+            <p style="margin-top: 10px;">Penbox and Jotform still occupy 80% of our systems. We must work more to kill them.</p>
+        </div>
+    </div>
+    <img class="bleed-image-side" src="http://googleusercontent.com/image_collection/image_retrieval/7420816916192157062" alt="Star Destroyer fleet silhouette">
+</div>
+
+<!-- Slide 9: Mission Roadmap -->
+<div class="slide-container" id="slide9">
+    <h2 class="slide-title">MISSION ROADMAP</h2>
+    <div class="content-area">
+        <p style="text-align: center; margin-bottom: 30px; font-family: 'Orbitron'; color: #E63946;">SEARCH. IDENTIFY. ELIMINATE.</p>
+        <div class="timeline-layout">
+            <div class="timeline-line"></div>
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <h3>DEPLOY</h3>
+                <p>Native Builder Operational</p>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <h3>TARGET</h3>
+                <p>Identify Legacy Remnants</p>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <h3>DESTROY</h3>
+                <p>Migrate & Sunset Forms</p>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <h3>LIBERATE</h3>
+                <p>Final Imperial Removal</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 10: May the FNOL be with you -->
+<div class="slide-container" id="slide10" style="background-image: url('http://googleusercontent.com/image_collection/image_retrieval/10829684698711732086'); background-size: cover; background-position: center;">
+    <div class="bg-glow" style="left: -300px; right: auto; background: radial-gradient(circle, rgba(0, 164, 255, 0.15) 0%, transparent 70%);"></div>
+    <div class="section-title-layout">
+        <h2 style="color: #FFE81F; text-shadow: 0 0 40px #FFE81F;">MAY THE FNOL BE WITH YOU</h2>
+        <p class="subtitle" style="font-family: 'Orbitron'; color: #00A4FF;">QUESTIONS FOR THE ALLIANCE COMMAND?</p>
+        <div style="margin-top: 60px; color: #94a3b8; font-family: 'Orbitron'; letter-spacing: 2px;">PLATFORM-COMMAND@QOVER.COM</div>
+    </div>
+</div>
+
+</body>
+</html>
