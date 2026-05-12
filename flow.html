@@ -277,6 +277,7 @@ transition: all 0.2s ease;
     font-family: 'Fira Code', 'Courier New', monospace;
     font-size: 11px;
     max-height: 180px;
+    min-height:100px;
    
     overflow-y: auto;
     overflow-x: auto;
@@ -309,6 +310,29 @@ transition: all 0.2s ease;
 }
 
 
+.result-render-area {
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+    color: #334155;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.result-render-area ul {
+    padding-left: 1.2rem;
+}
+
+.result-render-area strong {
+    color: #1e293b;
+}
+
+.result-render-area pre {
+    background: #f8fafc;
+    padding: 15px;
+    border-radius: 8px;
+    color: #475569;
+}
+
   </style>
   <script>
     let editor, schemaEditor, transformerAce, simContextEditor, mainScriptAce, editing = null;
@@ -333,6 +357,10 @@ const $ = id => document.getElementById(id);
       <button id="clearFlowBtn" class="btn btn-outline-danger btn-sm rounded-pill">Reset</button>
     </div>
   </div>
+
+  <div id="pipelineProgressContainer" style="position: fixed; top: 76px; left: 16px; right: 16px; height: 4px; background: #e2e8f0; border-radius: 2px; z-index: 9999; display: none; overflow: hidden;">
+    <div id="pipelineProgressBar" style="height: 100%; width: 0%; background: var(--primary); transition: width 0.4s ease, background 0.3s ease;"></div>
+</div>
 
   <input type="file" id="importInput" style="display:none" accept=".json">
   <div id="drawflow"></div>
@@ -368,6 +396,9 @@ const $ = id => document.getElementById(id);
         <button class="btn btn-danger me-4 px-4 rounded-pill shadow-sm" id="deleteNodeBtn">Delete Node</button>
         <button class="btn btn-outline-secondary me-2 px-4 rounded-pill" id="cancelBtn">Discard</button>
         <button id="saveBtn" class="btn btn-primary px-5 fw-bold rounded-pill shadow">Save Changes</button>
+        <button id="magicAuditBtn" class="btn btn-outline-warning rounded-pill px-3 me-2">
+            <i class="bi bi-shield-check"></i> Audit Configuration
+        </button>
     </div>
   </div>
   <div class="editor-body">
@@ -378,6 +409,19 @@ const $ = id => document.getElementById(id);
             <label class="small fw-bold text-secondary uppercase" id="mainEditorLabel">Input</label>
             <button id="magicPromptBtn" class="btn btn-sm btn-outline-primary rounded-pill px-3"><i class="bi bi-magic"></i> AI Refine</button>
         </div>
+
+        <div id="auditResultsPanel" class="mb-3" style="display: none;">
+            <div class="card border-warning shadow-sm">
+                <div class="card-header bg-warning-subtle d-flex justify-content-between align-items-center py-2">
+                    <span class="fw-bold small text-warning-emphasis"><i class="bi bi-shield-check"></i> Configuration Audit</span>
+                    <button type="button" class="btn-close small" style="font-size: 0.7rem;" onclick="$('auditResultsPanel').style.display='none'"></button>
+                </div>
+                <div class="card-body p-0" id="auditContentList" style="max-height: 200px; overflow-y: auto;">
+                    </div>
+            </div>
+        </div>
+
+
         <textarea class="prompt-textarea" id="promptInput"></textarea>
         <div id="mainScriptAce" style="display:none; flex: 1; width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></div>
 
@@ -385,12 +429,16 @@ const $ = id => document.getElementById(id);
     </div>
     <div class="editor-sidebar">
       <div class="sidebar-section mb-4">
-          <div class="d-flex justify-content-between mb-2">
-              <label class="small fw-bold text-secondary uppercase">Mapping (JSONata)</label>
-              <button id="magicMapBtn" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0" style="font-size: 10px;">AI Sync Parents</button>
-          </div>
+        <div class="d-flex justify-content-between mb-2">
+            <label class="small fw-bold text-secondary uppercase">
+                Mapping (JSONata) 
+                <span id="jsonataStatus" class="ms-2 badge rounded-pill bg-secondary" style="font-size: 9px;">CHECKING...</span>
+            </label>
+            <button id="magicMapBtn" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0" style="font-size: 10px;">AI Sync Parents</button>
+        </div>
+     
           <div id="transformerAce" style="height: 250px; border: 1px solid #e2e8f0; border-radius: 6px;"></div>
-      </div>
+             </div>
       <div class="sidebar-section">
           <div class="d-flex justify-content-between mb-2">
               <label class="small fw-bold text-secondary uppercase">Output Schema</label>
@@ -417,7 +465,11 @@ const $ = id => document.getElementById(id);
     <h6 class="fw-bold mb-3 d-flex align-items-center"><i class="bi bi-shield-lock text-primary me-2"></i>Vertex AI Setup</h6>
     <input type="text" id="projectId" class="form-control mb-2" placeholder="Project ID" value="qover-ai-agent-test">
     <input type="text" id="locationId" class="form-control mb-2" placeholder="Location" value="europe-west1">
-    <input type="password" id="tokenInput" class="form-control mb-3" placeholder="GCloud Token">
+<div class="modal-body p-4 bg-white rounded">
+    <h6 class="fw-bold mb-3 d-flex align-items-center"><i class="bi bi-shield-lock text-primary me-2"></i>Gemini AI Setup</h6>
+    <input type="password" id="apiKeyInput" class="form-control mb-3" placeholder="Enter Gemini API Key">
+   
+</div>
     <button id="saveConfigBtn" class="btn btn-primary btn-sm w-100 rounded-pill">Save Settings</button>
 </div></div></div></div>
 
@@ -438,11 +490,76 @@ const $ = id => document.getElementById(id);
     </div>
   </div>
 
-  
+  <div class="toast-container position-fixed bottom-0 start-0 p-3" style="z-index: 30000;">
+    <div id="liveToast" class="toast align-items-center text-white bg-dark border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body" id="toastMessage">
+          Pipeline initialized...
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="finalResultModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+            <div class="modal-header bg-primary text-white border-0 py-3">
+                <h5 class="modal-title fw-bold"><i class="bi bi-flag-fill me-2"></i> Pipeline Execution Summary</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div id="finalReportContent">
+                    </div>
+            </div>
+            <div class="modal-footer border-0 bg-light">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Dismiss</button>
+                <button type="button" class="btn btn-primary rounded-pill px-4" onclick="window.print()"><i class="bi bi-printer me-2"></i> Print Report</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
+function validateJSONata(expression) {
+    const statusEl = $("jsonataStatus");
+    if (!expression || expression.trim() === "($)") {
+        statusEl.innerText = "DEFAULT";
+        statusEl.className = "ms-2 badge rounded-pill bg-secondary";
+        return;
+    }
+
+    try {
+        // This only 'parses' the AST, it doesn't execute against data
+        jsonata(expression); 
+        statusEl.innerText = "VALID";
+        statusEl.className = "ms-2 badge rounded-pill bg-success";
+    } catch (e) {
+        // e.position gives the column where the syntax error is
+        statusEl.innerText = `INVALID: ${e.message.split(':')[0]}`;
+        statusEl.className = "ms-2 badge rounded-pill bg-danger";
+        console.warn("JSONata Syntax Error:", e);
+    }
+}
 
 
+
+
+function notify(message, type = 'info') {
+    const toastEl = document.getElementById('liveToast');
+    const toastMsg = document.getElementById('toastMessage');
+    
+    // Change color based on type
+    toastEl.classList.remove('bg-dark', 'bg-success', 'bg-danger', 'bg-primary');
+    if (type === 'success') toastEl.classList.add('bg-success');
+    else if (type === 'error') toastEl.classList.add('bg-danger');
+    else if (type === 'process') toastEl.classList.add('bg-primary');
+    else toastEl.classList.add('bg-dark');
+
+    toastMsg.innerText = message;
+    const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+    toast.show();
+}
 
 $("exportBtn").onclick = () => {
     const rawData = editor.export().drawflow.Home.data;
@@ -498,75 +615,100 @@ $("exportBtn").onclick = () => {
 };
 
 async function runFullSimulation(rootInput) {
-    const nodes = editor.export().drawflow.Home.data;
-    let globalContext = JSON.parse(JSON.stringify(rootInput)); 
+    const nodesData = editor.export().drawflow.Home.data;
+    const totalNodes = Object.keys(nodesData).length;
+    let globalContext = JSON.parse(JSON.stringify(rootInput));
     const executed = new Set();
-    
+    const finalResultsMap = {}; // Storage for individual node outputs
+
+    // 1. Initialize Progress Bar UI
+    const pContainer = $("pipelineProgressContainer");
+    const pBar = $("pipelineProgressBar");
+    if (pContainer && pBar) {
+        pContainer.style.display = "block";
+        pBar.style.width = "0%";
+        pBar.style.background = "var(--primary)";
+    }
+
+    // 2. Reset UI Trays
     document.querySelectorAll('.node-result-tray').forEach(el => el.innerHTML = "");
-    
+
+    // 3. Initial Log Entry
     $("logContent").innerHTML = `
         <div class="log-entry" style="border-left-color: #f59e0b">
-            <div class="log-title">PIPELINE START (ROOT CONTEXT)</div>
+            <div class="log-title">Pipeline Start</div>
+            <span class="log-label">Root Context</span>
             <code class="log-code">${JSON.stringify(globalContext, null, 2)}</code>
         </div>`;
 
-    while (executed.size < Object.keys(nodes).length) {
-        const readyNodes = Object.keys(nodes).filter(id => 
-            !executed.has(id) && 
-            nodes[id].inputs.input_1.connections.every(c => executed.has(c.node.toString()))
+    // 4. Execution Loop
+    while (executed.size < totalNodes) {
+        const readyNodes = Object.keys(nodesData).filter(id =>
+            !executed.has(id) &&
+            nodesData[id].inputs.input_1.connections.every(c => executed.has(c.node.toString()))
         );
-        
+
         if (!readyNodes.length) break;
-        
+
         const snapshot = JSON.parse(JSON.stringify(globalContext));
         const levelResults = [];
 
         for (const id of readyNodes) {
-            const nodeEl = document.getElementById('node-'+id);
+            const nodeEl = document.getElementById('node-' + id);
             nodeEl.classList.add('running');
-            const d = nodes[id].data;
+            const d = nodesData[id].data;
+            const nodeName = d.nodeId || id;
             
             try {
-                // 1. JSONata Mapping (Input preparation)
+                // Prepare Input Mapping via JSONata
                 const payload = await jsonata(d.transformer || "($)").evaluate(snapshot);
                 let resultData;
-                let logTitle = `AGENT @${d.nodeId || d.id}`;
 
-                // --- BRANCH: API CALL vs AI AGENT ---
+                // --- BRANCH 1: API CALL ---
                 if (d.apiCall) {
                     const http = d.apiCall.http;
-                    logTitle = `API CALL @${d.id} COMPLETED`;
-                    
-                    const response = await fetch(http.url, {
-                        method: http.method === "HTTP_METHOD_POST" ? "POST" : "GET",
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: http.method === "HTTP_METHOD_POST" ? JSON.stringify(payload) : null
+                    const gasProxyUrl = "https://script.google.com/a/macros/qover.com/s/AKfycbw0qpBe7Vgl-XW2VPgeJU63UD3J1NRo12THkKyLSFqjOni1Rczk4hgEtE4pdvq7zfKH3Q/exec";
+
+                    const response = await fetch(gasProxyUrl, {
+                        method: "POST",
+                        headers: { 'Content-Type': 'text/plain' },
+                        body: JSON.stringify({
+                            url: http.url,
+                            method: "POST",
+                            headers: http.headers,
+                            payload: payload
+                        })
                     });
 
-                    if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-                    resultData = await response.json();
+                    const text = await response.text();
+                    resultData = JSON.parse(text);
 
-                    // Specific Logging for API
+                    nodeEl.querySelector('.node-result-tray').innerText = JSON.stringify(resultData, null, 2);
+                    nodeEl.classList.replace('running', 'completed');
+
                     $("logContent").innerHTML += `
-                        <div class="log-entry" style="border-left-color: #38bdf8">
-                            <div class="log-title">${logTitle}</div>
-                            <span class="log-label" style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">1. Request URL</span>
-                            <div class="log-code" style="color: #38bdf8;">${http.url}</div>
-                            <span class="log-label" style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">2. Payload Sent</span>
-                            <code class="log-code">${JSON.stringify(payload, null, 2)}</code>
-                            <span class="log-label" style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">3. JSON Response</span>
-                            <code class="log-code" style="color: #10b981;">${JSON.stringify(resultData, null, 2)}</code>
+                        <div class="log-entry" style="border-left-color: #3b82f6;">
+                            <div class="log-title">API Call @${nodeName}</div>
+                            <span class="log-label">Response</span>
+                            <code class="log-code">${text}</code>
                         </div>`;
-                } 
-                else if (d.isScriptOnly) {
-                    // Handle pure JSONata nodes if they exist
-                    resultData = payload; 
-                    logTitle = `LOGIC @${d.nodeId} COMPLETED`;
                 }
+                // --- BRANCH 2: LOGIC/SCRIPT ONLY ---
+                else if (d.isScriptOnly) {
+                    const scriptCode = d.resolver?.inline?.script?.code || d.scriptCode;
+                    resultData = await jsonata(scriptCode).evaluate(payload);
+
+                    nodeEl.querySelector('.node-result-tray').innerText = JSON.stringify(resultData, null, 2);
+                    nodeEl.classList.replace('running', 'completed');
+
+                    $("logContent").innerHTML += `
+                        <div class="log-entry" style="border-left-color: #6366f1;">
+                            <div class="log-title">Logic Node @${nodeName}</div>
+                            <code class="log-code">${JSON.stringify(resultData, null, 2)}</code>
+                        </div>`;
+                }
+                // --- BRANCH 3: STANDARD AI AGENT ---
                 else {
-                    // Standard AI Execution
                     const renderedPrompt = d.prompt.replace(/\{\{(.*?)\}\}/g, (m, e) => {
                         try { return new Function(...Object.keys(payload), `return ${e}`)(...Object.values(payload)); } catch { return m; }
                     });
@@ -574,51 +716,133 @@ async function runFullSimulation(rootInput) {
                     const aiRes = await callAI(renderedPrompt, d.schema);
                     resultData = JSON.parse(aiRes);
 
-                    // Deep Logging for AI
+                    nodeEl.querySelector('.node-result-tray').innerText = JSON.stringify(resultData, null, 2);
+                    nodeEl.classList.replace('running', 'completed');
+
                     $("logContent").innerHTML += `
                         <div class="log-entry">
-                            <div class="log-title">${logTitle}</div>
-                            <span class="log-label" style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">1. Prompt</span>
-                            <div class="log-code" style="background: #1e1b4b;">${renderedPrompt}</div>
-                            <span class="log-label" style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">2. AI Result</span>
-                            <code class="log-code" style="color: #10b981;">${JSON.stringify(resultData, null, 2)}</code>
+                            <div class="log-title">Agent @${nodeName}</div>
+                            <code class="log-code" style="color: #10b981;">${aiRes}</code>
                         </div>`;
                 }
 
-                // 4. Update Node UI
-                nodeEl.querySelector('.node-result-tray').innerText = JSON.stringify(resultData, null, 2);
-                nodeEl.classList.replace('running', 'completed');
+                // Unified state update for all branches
+                finalResultsMap[id] = resultData;
                 levelResults.push(resultData);
+                executed.add(id);
+                
+                if (pBar) pBar.style.width = ((executed.size / totalNodes) * 100) + "%";
+                notify(`✅ Node @${nodeName} Completed`, 'success');
 
-            } catch (e) { 
+            } catch (e) {
+                console.error("Execution error:", e);
                 nodeEl.classList.remove('running');
-                nodeEl.classList.add('failed'); // You can add a failed class in CSS
+                nodeEl.classList.add('failed');
+                notify(`❌ Node @${nodeName} Failed`, 'error');
+                if (pBar) pBar.style.background = "#ef4444";
+
                 $("logContent").innerHTML += `
                     <div class="log-entry" style="border-left-color: #ef4444">
-                        <div class="log-title text-danger">NODE FAILED</div>
+                        <div class="log-title text-danger">Node Failed: @${nodeName}</div>
                         <code class="log-code text-danger">${e.message}</code>
                     </div>`;
+                
+                executed.add(id); 
             }
-            executed.add(id);
         }
         levelResults.forEach(r => Object.assign(globalContext, r));
+    }
+
+    // 5. Finalize Progress Bar
+    if (pBar) {
+        pBar.style.width = "100%";
+        pBar.style.background = "#10b981";
+        setTimeout(() => { pContainer.style.display = "none"; }, 2500);
+    }
+
+    // 6. POST-SIMULATION SUMMARY
+    const leafNodes = Object.keys(nodesData).filter(id => {
+        return nodesData[id].outputs.output_1.connections.length === 0;
+    });
+
+    if (leafNodes.length > 0) {
+        const reportContent = $("finalReportContent");
+        reportContent.innerHTML = ""; 
+
+        leafNodes.forEach(id => {
+            const nodeData = nodesData[id].data;
+            const nodeName = nodeData.nodeId || id;
+            const nodeResult = finalResultsMap[id];
+            
+            let resultHtml = "";
+            if (nodeResult) {
+                // Prioritize rich snippet if it exists in the specific node result
+                if (nodeResult.scenarioSnippet) {
+                    resultHtml = nodeResult.scenarioSnippet;
+                } else {
+                    resultHtml = `<pre class="mb-0" style="font-size:12px">${JSON.stringify(nodeResult, null, 2)}</pre>`;
+                }
+            } else {
+                resultHtml = `<div class="text-muted small">No result captured for this node.</div>`;
+            }
+
+            const section = document.createElement('div');
+            section.className = "card mb-3 border-0 shadow-sm rounded-4";
+            section.innerHTML = `
+                <div class="card-header bg-white fw-bold text-primary border-0 pt-3 pb-0">
+                   <i class="bi bi-check-circle-fill me-2"></i> Result: @${nodeName}
+                </div>
+                <div class="card-body">
+                    <div class="p-3 bg-white border rounded-3 result-render-area">
+                        ${resultHtml}
+                    </div>
+                </div>
+            `;
+            reportContent.appendChild(section);
+        });
+
+        const modalInstance = new bootstrap.Modal($('finalResultModal'));
+        modalInstance.show();
     }
 }
 
 
 
-
 const callAI = async (prompt, schema) => {
-    const token = localStorage.getItem("v_token");
-    const r = await fetch(`https://${localStorage.getItem("v_loc")}-aiplatform.googleapis.com/v1/projects/${localStorage.getItem("v_proj")}/locations/${localStorage.getItem("v_loc")}/publishers/google/models/gemini-2.5-flash:generateContent`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({
-            "generationConfig": { "temperature": 0.1, "responseMimeType": "application/json", "responseSchema": schema },
-            "contents": [{ "role": "user", "parts": [{"text": prompt}] }]
+    const apiKey = localStorage.getItem("v_api_key");
+    if (!apiKey) {
+        notify("Missing API Key! Please configure it in settings.", "error");
+        throw new Error("API Key not found");
+    }
+
+    // Google AI Studio Endpoint (Standard Gemini API)
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`;
+
+    const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({@
+            "generationConfig": { 
+                "temperature": 0.1, 
+                "responseMimeType": "application/json", 
+                "responseSchema": schema 
+            },
+            "contents": [{ 
+                "role": "user", 
+                "parts": [{"text": prompt}] 
+            }]
         })
     });
-    const d = await r.json(); return d.candidates[0].content.parts[0].text;
+
+    if (!r.ok) {
+        const err = await r.json();
+        throw new Error(err.error?.message || "AI Request Failed");
+    }
+
+    const d = await r.json();
+    return d.candidates[0].content.parts[0].text;
 };
+
 
 document.addEventListener("DOMContentLoaded", () => {
     editor = new Drawflow($("drawflow")); editor.start();
@@ -631,7 +855,21 @@ document.addEventListener("DOMContentLoaded", () => {
     mainScriptAce.setTheme("ace/theme/tomorrow_night_eighties"); // Dark theme for logic
     mainScriptAce.session.setMode("ace/mode/jsonata");
 
+// Attach to the Ace Editor change event
+transformerAce.getSession().on('change', () => {
+    validateJSONata(transformerAce.getValue());
+});
 
+// Update transformerAce (sidebar) and mainScriptAce (logic) settings
+[transformerAce, mainScriptAce].forEach(aceEditor => {
+    aceEditor.setOptions({
+        useSoftTabs: true,
+        tabSize: 2,
+        wrap: true,            // Wraps long lines so you don't scroll horizontally
+        indentedSoftWrap: true, // Keeps the indentation when a line wraps
+        behavioursEnabled: true // Auto-pairs brackets/quotes
+    });
+});
 
     $("importBtn").onclick = () => $("importInput").click();
     $("importInput").onchange = (e) => {
@@ -652,17 +890,59 @@ document.addEventListener("DOMContentLoaded", () => {
     s.style.display = (currentDisplay === 'none') ? 'block' : 'none';
 };
     $("closeSimBtn").onclick = () => $("simLogSidebar").style.display = 'none';
-    $("configBtn").onclick = () => new bootstrap.Modal($('configModal')).show();
-    $("saveConfigBtn").onclick = () => {
-        localStorage.setItem("v_proj", $("projectId").value); localStorage.setItem("v_loc", $("locationId").value); localStorage.setItem("v_token", $("tokenInput").value);
-        bootstrap.Modal.getInstance($('configModal')).hide();
-    };
+    // Update the Save Button logic
+$("saveConfigBtn").onclick = () => {
+    localStorage.setItem("v_api_key", $("apiKeyInput").value);
+    bootstrap.Modal.getInstance($('configModal')).hide();
+    notify("API Key saved", "success");
+};
+
+// Update the Config Button logic to populate the field when opened
+$("configBtn").onclick = () => {
+    $("apiKeyInput").value = localStorage.getItem("v_api_key") || "";
+    new bootstrap.Modal($('configModal')).show();
+};
     $("saveBtn").onclick = () => {
-        const d = { nodeId: $("nodeIdInput").value, prompt: $("promptInput").value, schema: schemaEditor.get(), transformer: transformerAce.getValue() };
-        editor.updateNodeDataFromId(editing, d);
-        document.getElementById("node-"+editing).querySelector(".drawflow_content_node").innerHTML = htmlOf(d);
-        $("nodeEditorOverlay").style.display = "none";
+    // 1. Get the current state of the node before updating
+    const currentNode = editor.getNodeFromId(editing).data;
+    const isScript = !!currentNode.isScriptOnly;
+
+    // 2. Build the basic data
+    const d = { 
+        nodeId: $("nodeIdInput").value, 
+        transformer: transformerAce.getValue() // This is always the JSONata mapping
     };
+
+    if (isScript) {
+        // --- LOGIC NODE SAVING ---
+        d.isScriptOnly = true;
+        console.log(d);
+        // We ensure the logic code from mainScriptAce goes into the specific resolver structure
+        d.script =  mainScriptAce.getValue();
+                    
+           
+      
+    } else {
+        // --- STANDARD AGENT SAVING ---
+        d.prompt = $("promptInput").value;
+        d.schema = schemaEditor.get();
+        // If it was an API node, preserve that structure
+        if(currentNode.apiCall) d.apiCall = currentNode.apiCall;
+    }
+
+    // 3. Update Drawflow internal state
+    editor.updateNodeDataFromId(editing, d);
+    
+    // 4. Update the visual UI of the node
+    const nodeEl = document.getElementById("node-" + editing);
+    if (nodeEl) {
+        nodeEl.querySelector(".drawflow_content_node").innerHTML = htmlOf(d);
+    }
+    
+    // 5. Close overlay
+    $("nodeEditorOverlay").style.display = "none";
+    notify("Node configuration saved", "success");
+};
 });
 
 
@@ -687,7 +967,7 @@ function triggerEditFromNode(el) {
         $("mainEditorLabel").innerText = "JSONata Logic Expression";
         $("magicPromptBtn").style.display = "none"; 
         
-        mainScriptAce.setValue(d.transformer || "", -1);
+        mainScriptAce.setValue(d.script || "", -1);
 
     } else {
         // 2. Regular Agent / API UI State
@@ -757,7 +1037,7 @@ const htmlOf = (d) => {
                     <div style="font-size: 9px; color: #6366f1; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">
                         JSONata Expression
                     </div>
-                    <pre class="script-code-block">${d.transformer}</pre>
+                    <pre class="script-code-block">${d.script}</pre>
                 </div>
             ` : `
                 <div class="prompt-text">${d.prompt || '<i>Unconfigured Agent</i>'}</div>
@@ -841,6 +1121,7 @@ function importFromOriginalSchema(json) {
 }
 
 // Helper to keep the import function clean
+
 function buildNodeData(n) {
     const resolver = n.resolver || {};
     const inline = resolver.inline || {};
@@ -849,8 +1130,9 @@ function buildNodeData(n) {
     if (inline.apiCall || resolver.apiCall) {
         data.apiCall = inline.apiCall || resolver.apiCall;
     } else if (inline.script || resolver.script) {
-        const s = inline.script || resolver.script;
-        data.transformer = s.code;
+      
+        data.script = inline.script.code;
+        data.transformer = resolver.inputTransformer.code;
         data.isScriptOnly = true;
     } else {
         data.prompt = inline.aiPrompt?.promptTemplate;
@@ -860,6 +1142,186 @@ function buildNodeData(n) {
     return data;
 }
 
+$("magicAuditBtn").onclick = async () => {
+    const auditPanel = $("auditResultsPanel");
+    const auditList = $("auditContentList");
+    const loader = $("editorAiLoader");
+    
+    loader.style.display = 'flex';
+    auditPanel.style.display = 'none';
+
+    // 1. Define the Schema for the AI Response (Fixes the ReferenceError)
+    const auditSchemaDefinition = {
+        type: "object",
+        properties: {
+            status: { type: "string", enum: ["PASS", "ISSUE_DETECTED"] },
+            findings: { 
+                type: "array", 
+                items: { 
+                    type: "object",
+                    properties: {
+                        severity: { type: "string", enum: ["ERROR", "WARNING"] },
+                        message: { type: "string" },
+                        fix: { type: "string" }
+                    },
+                    required: ["severity", "message", "fix"]
+                } 
+            }
+        },
+        required: ["status", "findings"]
+    };
+
+    // 2. Identify Parents and their Schemas
+    const currentNode = editor.getNodeFromId(editing);
+    const parentNodes = currentNode.inputs.input_1.connections.map(conn => {
+        const p = editor.getNodeFromId(conn.node);
+        return { 
+            id: p.data.nodeId || p.data.id, 
+            schema: p.data.schema || {} 
+        };
+    });
+
+    const auditContext = {
+        currentNodeId: currentNode.data.nodeId || currentNode.data.id,
+        currentPrompt: $("promptInput").value,
+        currentMapping: transformerAce.getValue(),
+        availableInputs: parentNodes
+    };
+
+    const auditInstruction = `
+        You are an Insurance Workflow Auditor.
+        Check if the 'currentPrompt' references variables ({{variable}}) that don't exist in the 'availableInputs' parent schemas.
+        Check if the 'currentMapping' (JSONata) refers to paths not present in the parent outputs.
+        
+        Context: ${JSON.stringify(auditContext)}
+    `;
+
+    try {
+        const r = await callAI(auditInstruction, auditSchemaDefinition);
+        const report = JSON.parse(r);
+        
+        auditList.innerHTML = "";
+        
+        if (report.status === "PASS" || report.findings.length === 0) {
+            auditList.innerHTML = `
+                <div class="p-3 text-success small d-flex align-items-center gap-2">
+                    <i class="bi bi-check-circle-fill"></i> 
+                    <span>Configuration valid. No discrepancies detected between parents and this node.</span>
+                </div>`;
+        } else {
+            const listGroup = document.createElement('div');
+            listGroup.className = "list-group list-group-flush";
+            
+            report.findings.forEach(f => {
+                const isError = f.severity === 'ERROR';
+                listGroup.innerHTML += `
+                    <div class="list-group-item p-3 bg-transparent border-bottom">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="badge ${isError ? 'bg-danger' : 'bg-warning text-dark'}" style="font-size: 10px;">${f.severity}</span>
+                            <span class="small fw-bold text-dark">${f.message}</span>
+                        </div>
+                        <div class="bg-light p-2 rounded border" style="font-size: 11px;">
+                            <span class="text-secondary fw-bold text-uppercase" style="font-size: 9px;">Suggested Fix</span>
+                            <div class="font-monospace mt-1 text-primary">${f.fix}</div>
+                        </div>
+                    </div>`;
+            });
+            auditList.appendChild(listGroup);
+        }
+        
+        auditPanel.style.display = 'block';
+        
+    } catch (e) {
+        console.error("Audit failed:", e);
+        notify("Audit system encountered an error", "error");
+    } finally {
+        loader.style.display = 'none';
+    }
+};
+$("magicMapBtn").onclick = async () => {
+    if (!editing) return;
+    $("editorAiLoader").style.display = 'flex';
+
+    // 1. Recursive function to find ALL upstream ancestors (any level)
+    const allNodes = editor.export().drawflow.Home.data;
+    const allUpstreamIds = new Set();
+    
+    const findAncestors = (nodeId) => {
+        const node = allNodes[nodeId];
+        if (!node || !node.inputs.input_1) return;
+        
+        node.inputs.input_1.connections.forEach(conn => {
+            const pNode = allNodes[conn.node];
+            const pId = pNode.data.nodeId || pNode.data.id;
+            if (!allUpstreamIds.has(pId)) {
+                allUpstreamIds.add(pId);
+                findAncestors(conn.node); // Recurse upstream
+            }
+        });
+    };
+
+    findAncestors(editing);
+    const ancestorList = Array.from(allUpstreamIds);
+
+    // 2. Capture the current existing logic
+    const currentExpression = transformerAce.getValue();
+
+    // 3. Refined AI Instruction for "Merging" rather than "Replacing"
+    const mapSchema = {
+        type: "object",
+        properties: {
+            jsonata_expression: { type: "string" },
+            changes_made: { type: "string" }
+        },
+        required: ["jsonata_expression"]
+    };
+
+  
+    const mapInstruction = `
+    You are a JSONata Senior Engineer. 
+    Refactor the EXISTING JSONata expression to include outputs from ALL upstream nodes.
+    
+    UPSTREAM NODES: [${ancestorList.join(", ")}]
+    
+    EXISTING EXPRESSION:
+    """
+    ${currentExpression}
+    """
+
+    FORMATTING RULES:
+    1. READABILITY: Use multiple lines. Do NOT return a single-line string.
+    2. INDENTATION: Use 2 spaces for nested objects.
+    3. SEMICOLONS: Place each variable assignment on its own line followed by a semicolon.
+    4. PRESERVE LOGIC: Keep existing transformations ($number, $lookup, etc.).
+    
+    The structure should look exactly like this:
+    (
+      $inputPrompt := [
+        { "claim": claim },
+        \`node-1\`,
+        \`node-2\`
+      ] ~> $merge;
+      { "inputPrompt": $inputPrompt }
+    )
+`;
+
+    try {
+        const r = await callAI(mapInstruction, mapSchema);
+        const parsed = JSON.parse(r);
+        
+        // 4. Update the Ace Editor with the merged logic
+        transformerAce.setValue(parsed.jsonata_expression, -1);
+validateJSONata(parsed.jsonata_expression); // Immediate proof check
+notify("Mapping synced and validated", "success");
+        
+        
+    } catch (e) {
+        console.error("Mapping Sync failed:", e);
+        notify("AI Sync failed: Upstream graph too complex or no parents found", "error");
+    } finally {
+        $("editorAiLoader").style.display = 'none';
+    }
+};
 
 $("magicPromptBtn").onclick = async () => {
     $("editorAiLoader").style.display = 'flex';
